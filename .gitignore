@@ -1,0 +1,14 @@
+# Dataset (large — never commit; download separately)
+data.zip
+*.zip
+/data/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# C-extension / setuptools build artifacts
+build/
+dist/
+*.egg
+*.so

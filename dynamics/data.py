@@ -164,7 +164,7 @@ def find_relations_neighbor(positions, query_idx, anchor_idx, radius, order, var
         if count_neighbors == 0:
             continue
 
-        receiver = np.ones(count_neighbors, dtype=np.int) * query_idx[i]
+        receiver = np.ones(count_neighbors, dtype=int) * query_idx[i]
         sender = np.array(anchor_idx[neighbors[i]])
 
         # receiver, sender, relation_type
@@ -354,7 +354,7 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
 
     nodes = np.nonzero(dis < 0.1)[0]
     attr[-1, 2] = 1 # [0, 0, 1] is floor
-    floor = np.ones(nodes.shape[0], dtype=np.int) * (n_particles + 0) #0 for idx starting from zero
+    floor = np.ones(nodes.shape[0], dtype=int) * (n_particles + 0) #0 for idx starting from zero
     rels += [np.stack([nodes, floor, np.ones(nodes.shape[0])], axis=1)]
 
     if verbose and len(rels) > 0:
@@ -380,7 +380,7 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
             visualize_neighbors(positions, positions, 0, nodes)
             print(np.sort(dis)[:10])
 
-        wall = np.ones(nodes.shape[0], dtype=np.int) * (n_particles + i)
+        wall = np.ones(nodes.shape[0], dtype=int) * (n_particles + i)
         rels += [np.stack([nodes, wall, np.ones(nodes.shape[0])], axis=1)]
 
     queries = np.arange(n_particles)
