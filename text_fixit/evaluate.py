@@ -22,6 +22,14 @@ from run_episode import _make_agent, run_episode  # noqa: E402
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
+def _median(xs):
+    xs = sorted(x for x in xs if x is not None)
+    if not xs:
+        return float("nan")
+    m = len(xs) // 2
+    return xs[m] if len(xs) % 2 else (xs[m - 1] + xs[m]) / 2
+
+
 def _mean(xs):
     xs = [x for x in xs if x is not None]
     return sum(xs) / len(xs) if xs else float("nan")
@@ -63,6 +71,9 @@ def compute_metrics(records):
         "mean_score": _mean(scores),
         "score_ci": (sc_lo, sc_hi),
         "efficiency_sims_per_solved": _mean([r["n_simulate"] for r in solved]) if solved else float("nan"),
+        "sims_to_submit_mean": _mean([r["n_simulate"] for r in records]),
+        "sims_to_submit_median": _median([r["n_simulate"] for r in records]),
+        "committed_rate": _mean([1.0 if r["committed"] else 0.0 for r in records]),
         "recovery_rate": _mean([1.0 if r["terminal_pass"] else 0.0 for r in recov_pool]) if recov_pool else float("nan"),
         "recovery_n": len(recov_pool),
         "repeated_action_rate": (total_repeated / total_sims) if total_sims else 0.0,
@@ -100,21 +111,23 @@ def _fmt(x, pct=False):
 def write_report(run_id, split, per_agent_metrics, path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     lines = [f"# Fridge-repair evaluation - run `{run_id}` (split: {split})", "",
-             "| agent | N | success | mean score | recovery | efficiency | repeated | invalid | commit prec | over-budget |",
-             "|---|---|---|---|---|---|---|---|---|---|"]
+             "| agent | N | success | mean score | recovery | sims→submit (mean/med) | eff (solved) | committed | repeated | invalid | commit prec |",
+             "|---|---|---|---|---|---|---|---|---|---|---|"]
     for agent, m in per_agent_metrics.items():
         sci = m["success_ci"]
         lines.append(
             f"| {agent} | {m['n']} | {_fmt(m['success_rate'], 1)} "
             f"[{_fmt(sci[0], 1)},{_fmt(sci[1], 1)}] | {_fmt(m['mean_score'])} | "
             f"{_fmt(m['recovery_rate'], 1)} (n={m['recovery_n']}) | "
-            f"{_fmt(m['efficiency_sims_per_solved'])} | {_fmt(m['repeated_action_rate'], 1)} | "
-            f"{_fmt(m['invalid_action_rate'], 1)} | {_fmt(m['commit_precision'], 1)} | "
-            f"{_fmt(m['over_budget_rate'], 1)} |")
+            f"{_fmt(m['sims_to_submit_mean'])} / {_fmt(m['sims_to_submit_median'])} | "
+            f"{_fmt(m['efficiency_sims_per_solved'])} | {_fmt(m['committed_rate'], 1)} | "
+            f"{_fmt(m['repeated_action_rate'], 1)} | {_fmt(m['invalid_action_rate'], 1)} | "
+            f"{_fmt(m['commit_precision'], 1)} |")
     lines += ["", "**Metrics** - success: terminal PASS (within tol & closes & no collision); "
-              "recovery: of episodes whose first SIMULATE scored <0.80, fraction reaching PASS "
-              "(the central hypothesis); efficiency: mean SIMULATE calls among solved; commit prec: "
-              "of committed episodes, fraction PASS; over-budget: fraction auto-committed.", ""]
+              "recovery: of episodes whose first SIMULATE scored <0.80, fraction reaching PASS; "
+              "sims→submit: SIMULATE tries before the final answer (mean/median over ALL episodes); "
+              "eff(solved): mean tries among solved only; committed: fraction that chose COMMIT "
+              "(rest auto-committed at budget); commit prec: of committed episodes, fraction PASS.", ""]
     with open(path, "w") as f:
         f.write("\n".join(lines))
     return path
@@ -139,6 +152,28 @@ def append_per_type(path, per_agent_records, types=("scale", "translate", "rotat
         ms = _mean([r["terminal_score"] for r in recs])
         cells.append(f"{_fmt(sr, 1)} · {_fmt(ms)}")
         lines.append(f"| {agent} | " + " | ".join(cells) + " |")
+    with open(path, "a") as f:
+        f.write("\n".join(lines) + "\n")
+
+
+def append_submit_histogram(path, per_agent_records, budget):
+    """For each searching agent, distribution of tries-to-submit (n_simulate before COMMIT) and how
+    many at each count were solved -- shows whether committing later converts to success."""
+    lines = ["", f"## Tries to submit  (SIMULATE calls before final answer; hard cap {budget})", ""]
+    for agent, recs in per_agent_records.items():
+        if not any(r["n_simulate"] for r in recs):     # skip oneshot/oracle (no search)
+            continue
+        lines += [f"**{agent}**", "",
+                  "| tries | episodes | solved | solve-rate |", "|---|---|---|---|"]
+        by = defaultdict(list)
+        for r in recs:
+            by[r["n_simulate"]].append(r)
+        for k in sorted(by):
+            eps = by[k]
+            ns = sum(1 for r in eps if r["terminal_pass"])
+            note = " (auto-commit at cap)" if k >= budget else ""
+            lines.append(f"| {k}{note} | {len(eps)} | {ns} | {_fmt(ns / len(eps), 1)} |")
+        lines.append("")
     with open(path, "a") as f:
         f.write("\n".join(lines) + "\n")
 
@@ -208,6 +243,7 @@ if __name__ == "__main__":
     report = write_report(args.run, args.split, per_agent,
                           os.path.join(HERE, "reports", f"{args.run}.md"))
     append_per_type(report, per_agent_records)
+    append_submit_histogram(report, per_agent_records, args.budget)
     print(f"\nreport -> {report}")
     print(json.dumps({a: {k: v for k, v in m.items() if not k.endswith("_ci")}
                       for a, m in per_agent.items()}, indent=2))
