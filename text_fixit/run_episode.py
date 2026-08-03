@@ -99,7 +99,10 @@ def _make_agent(name, seed=0):
         return OracleAgent()
     if name in ("gemini", "loop_gemini"):
         from agents.gemini import GeminiAgent
-        return GeminiAgent(oneshot=False)
+        return GeminiAgent(oneshot=False, history="window3")
+    if name == "loop_gemini_full":
+        from agents.gemini import GeminiAgent
+        return GeminiAgent(oneshot=False, history="full")
     if name in ("oneshot_gemini", "oneshot"):
         from agents.gemini import GeminiAgent
         return GeminiAgent(oneshot=True)

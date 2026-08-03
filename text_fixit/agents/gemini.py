@@ -43,16 +43,32 @@ def _load(name):
         return Template(f.read())
 
 
+def _msg(role, text):
+    """One conversation turn for the google-genai `contents` list (role: 'user' | 'model')."""
+    return {"role": role, "parts": [{"text": text}]}
+
+
 class GeminiAgent(Agent):
-    def __init__(self, oneshot=False, model=None, temperature=0.7, max_tokens=800):
+    def __init__(self, oneshot=False, model=None, temperature=0.7, max_tokens=800,
+                 history="window3"):
+        assert history in ("window3", "full")
         self.oneshot = oneshot
-        self.name = "oneshot_gemini" if oneshot else "loop_gemini"
+        self.history = history           # "window3": stateless call w/ last-3 summary each turn
+        #                                  "full":    one accumulating conversation per object
+        if oneshot:
+            self.name = "oneshot_gemini"
+        else:
+            self.name = "loop_gemini" if history == "window3" else "loop_gemini_full"
         self.model = model or os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
         self.temperature = temperature
         self.max_tokens = max_tokens
         self._system_tmpl = _load("system.txt")
         self._step_tmpl = _load("step.txt")
         self._client = None
+        self._messages = []             # running transcript for history="full"
+
+    def reset(self):
+        self._messages = []
 
     def _client_lazy(self):
         if self._client is None:
@@ -94,9 +110,33 @@ class GeminiAgent(Agent):
             observation=obs["text"], budget_left=(0 if self.oneshot else budget_left),
             commit_note=note, history=self._history_text(env))
 
+    def _obs_message(self, env, obs, budget_left):
+        """A single turn's user message for history='full' (no re-injected history block -- the
+        prior turns are already in the conversation)."""
+        if budget_left <= 0:
+            note = "\nBudget exhausted -- you MUST COMMIT now."
+        else:
+            note = f"\nBudget: {budget_left} SIMULATE call(s) remaining."
+        return (f"{obs['text']}{note}\n\nOutput your next action now "
+                "(one <think> block and one <act> block).")
+
     def act(self, ctx):
         env, obs = ctx["env"], ctx["obs"]
         system = self._system_prompt(env)
+
+        if self.history == "full" and not self.oneshot:
+            if ctx.get("retry_error"):
+                # same turn, correcting an invalid reply: the bad reply is already in the transcript
+                self._messages.append(_msg("user",
+                    f"Your previous output was invalid: {ctx['retry_error']}. "
+                    "Re-emit exactly one <think> and one <act> block with a valid action."))
+            else:
+                self._messages.append(_msg("user", self._obs_message(env, obs, ctx["budget_left"])))
+            raw = self._generate_messages(system, self._messages)
+            self._messages.append(_msg("model", raw))
+            return raw
+
+        # window3 (bounded) and oneshot: stateless single-message call
         step = self._step_prompt(env, obs, ctx["budget_left"])
         if ctx.get("retry_error"):
             step += (f"\n\nYour previous output was invalid: {ctx['retry_error']}. "
@@ -106,27 +146,37 @@ class GeminiAgent(Agent):
             raw = re.sub(r"\bSIMULATE\b", "COMMIT", raw, flags=re.IGNORECASE)
         return raw
 
-    def _generate(self, system, step, retries=3):
+    def _cfg(self):
         from google.genai import types
-        client = self._client_lazy()
-        cfg = types.GenerateContentConfig(system_instruction=system, temperature=self.temperature,
+        cfg = types.GenerateContentConfig(system_instruction=None, temperature=self.temperature,
                                           max_output_tokens=self.max_tokens)
-        # gemini-2.5-* spends "thinking" tokens against max_output_tokens, which can leave the
-        # visible reply empty; disable thinking (also faster + more deterministic for this task).
         if self.model.startswith("gemini-2.5"):
             try:
                 cfg.thinking_config = types.ThinkingConfig(thinking_budget=0)
             except Exception:  # noqa: BLE001 - older SDKs without ThinkingConfig
                 pass
+        return cfg
+
+    def _call(self, contents, system, retries=3):
+        client = self._client_lazy()
+        cfg = self._cfg()
+        cfg.system_instruction = system
         last = None
         for i in range(retries):
             try:
-                resp = client.models.generate_content(model=self.model, contents=step, config=cfg)
+                resp = client.models.generate_content(model=self.model, contents=contents, config=cfg)
                 txt = resp.text or ""
                 if txt.strip():
                     return txt
             except Exception as e:  # noqa: BLE001 - network/quota; back off and retry
                 last = e
                 time.sleep(1.5 * (i + 1))
-        # give up -> a parseable fallback so the episode still terminates cleanly
         return f"<think>api error: {last}</think><act>COMMIT NO_FIX()</act>"
+
+    def _generate_messages(self, system, messages):
+        return self._call(messages, system)
+
+    def _generate(self, system, step, retries=3):
+        # single-message (window3 / oneshot) call. gemini-2.5-* thinking is disabled in _cfg so the
+        # visible reply isn't starved; on failure returns a parseable fallback so the episode ends.
+        return self._call(step, system, retries=retries)
