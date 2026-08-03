@@ -5,8 +5,9 @@ data.zip
 
 # PartNet-Mobility meshes (fetch via text_fixit/download_partnet_mobility.py)
 text_fixit/assets/
-# Generated episode renders / trajectories
+# Generated episode renders / trajectories / metric reports
 text_fixit/runs/
+text_fixit/reports/
 # graphify knowledge-graph cache (tool output)
 graphify-out/
 

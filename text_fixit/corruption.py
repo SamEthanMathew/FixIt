@@ -26,16 +26,16 @@ from pathlib import Path
 
 import numpy as np
 
+import canonical
 import geom
+import grids
 
-TRANSLATE_RANGE = (0.08, 0.20)   # meters
-ROTATE_RANGE_DEG = (15.0, 45.0)  # degrees -- tilts in place, stays plausible
-SCALE_RANGE = (1.25, 1.60)       # enlarge factor on the door's largest axis
+TRANSLATE_RANGE = (0.08, 0.20)   # meters -- initial draw, snapped onto grids.VALUE_GRID
+ROTATE_RANGE_DEG = (15.0, 45.0)  # degrees -- tilts in place, snapped onto grids.ANGLE_GRID
+SCALE_RANGE = (1.25, 1.60)       # enlarge factor -- snapped onto grids.SCALE_GRID
 
 
 BROKEN_MARGIN = 3.0     # a corruption must displace the part by >= BROKEN_MARGIN * tau
-_GROWTH = 1.6           # magnitude multiplier per retry
-_MAX_TRIES = 6
 
 
 def _magnitude(spec):
@@ -43,13 +43,33 @@ def _magnitude(spec):
     return spec["value"]
 
 
-def _scaled(spec, factor):
-    """Same corruption with its magnitude grown by `factor` (about the identity)."""
+def _grow_on_grid(spec):
+    """Same corruption stepped to the next-larger ON-GRID magnitude, or None if the grid is
+    exhausted. Keeps sign (translate/rotate) or enlarge-direction (scale), so the inverse stays
+    on-grid. This replaces continuous multiplicative growth, which would leave the grid."""
+    t = spec["type"]
     out = dict(spec)
-    if spec["type"] == "scale":
-        out["value"] = 1.0 + (spec["value"] - 1.0) * factor   # grow away from 1.0, not 0.0
-    else:
-        out["value"] = spec["value"] * factor
+    if t == "translate":
+        grid = grids.VALUE_GRID
+        sign = -1.0 if spec["value"] < 0 else 1.0
+        idx = min(range(len(grid)), key=lambda i: abs(grid[i] - abs(spec["value"])))
+        if idx + 1 >= len(grid):
+            return None
+        out["value"] = sign * grid[idx + 1]
+    elif t == "rotate":
+        grid = grids.ANGLE_GRID
+        deg = math.degrees(spec["value"])
+        sign = -1.0 if deg < 0 else 1.0
+        idx = min(range(len(grid)), key=lambda i: abs(grid[i] - abs(deg)))
+        if idx + 1 >= len(grid):
+            return None
+        out["value"] = math.radians(sign * grid[idx + 1])
+    elif t == "scale":
+        grid = sorted(g for g in grids.SCALE_GRID if g > 1.0)     # enlarge side, ascending
+        idx = min(range(len(grid)), key=lambda i: abs(grid[i] - spec["value"]))
+        if idx + 1 >= len(grid):
+            return None
+        out["value"] = grid[idx + 1]
     return out
 
 
@@ -76,20 +96,21 @@ def sample_corruption(urdf, part, index, ctype, ensure_broken=True, client=None)
 
     if ctype == "translate":
         axis = int(rng.choice(order[:2]))        # shift along a broad axis of the door
-        val = rng.uniform(*TRANSLATE_RANGE) * rng.choice([-1, 1])
+        mag = grids.snap(rng.uniform(*TRANSLATE_RANGE), grids.VALUE_GRID)
+        val = abs(mag) * rng.choice([-1, 1])
         spec = {"type": "translate", "axis": axis, "value": val}
         fix = {"type": "translate", "axis": axis, "value": -val}
     elif ctype == "rotate":
         axis = int(rng.choice([0, 1, 2]))
-        val = math.radians(rng.uniform(*ROTATE_RANGE_DEG)) * rng.choice([-1, 1])
-        c = [float(x) for x in g["centroid"]]
+        deg = grids.snap(rng.uniform(*ROTATE_RANGE_DEG), grids.ANGLE_GRID)
+        val = math.radians(abs(deg) * rng.choice([-1, 1]))
+        c = canonical.part_centroid(urdf, part["link"])   # rotation centre (invariant, recomputable)
         spec = {"type": "rotate", "axis": axis, "value": val, "centroid": c}
         fix = {"type": "rotate", "axis": axis, "value": -val, "centroid": c}
     elif ctype == "scale":
         axis = int(order[0])                     # largest extent -> a visible size change
-        f = rng.uniform(*SCALE_RANGE)
-        # pivot at one bbox edge so the door grows in a single direction
-        pivot = float(g["min"][axis] if rng.random() < 0.5 else g["max"][axis])
+        f = grids.snap(rng.uniform(*SCALE_RANGE), grids.SCALE_GRID)
+        pivot = canonical.scale_pivot(urdf, part["link"], axis)   # hinge-side edge (invariant)
         spec = {"type": "scale", "axis": axis, "value": f, "pivot": pivot}
         fix = {"type": "scale", "axis": axis, "value": 1.0 / f, "pivot": pivot}
     else:
@@ -101,20 +122,19 @@ def sample_corruption(urdf, part, index, ctype, ensure_broken=True, client=None)
     if not ensure_broken:
         return spec, fix
 
-    # Grow the magnitude until the break clears BROKEN_MARGIN * tau. The probe URDF is written
-    # beside the meshes (not a temp dir) so its relative textured_objs/ paths still resolve.
+    # Grow the magnitude ON-GRID until the break clears BROKEN_MARGIN * tau. The probe URDF is
+    # written beside the meshes (not a temp dir) so its relative textured_objs/ paths still resolve.
     probe_name = f"_probe_{part['link']}_{ctype}_{index}.urdf"
     probe_path = Path(urdf).parent / probe_name
-    factor = 1.0
+    cur = spec
     try:
-        for _ in range(_MAX_TRIES):
-            cand = _scaled(spec, factor)
-            apply(urdf, cand, probe_name)
+        while cur is not None:
+            apply(urdf, cur, probe_name)
             g2 = geom.geometric_score(str(probe_path), urdf, part["joint"], part["link"],
                                       client=client)
             if g2["deviation_mm"] >= BROKEN_MARGIN * g2["tau_mm"]:
-                return cand, _invert(cand)
-            factor *= _GROWTH
+                return cur, _invert(cur)
+            cur = _grow_on_grid(cur)
         return None, None
     finally:
         if probe_path.exists():
