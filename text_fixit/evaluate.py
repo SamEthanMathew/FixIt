@@ -13,6 +13,7 @@ import json
 import os
 import random
 import sys
+from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from env import FridgeRepairEnv  # noqa: E402
@@ -119,12 +120,46 @@ def write_report(run_id, split, per_agent_metrics, path):
     return path
 
 
+def append_per_type(path, per_agent_records, types=("scale", "translate", "rotate")):
+    """Append a per-fault-type breakdown (success rate . mean score) to the report."""
+    lines = ["", "## By fault type  (success rate · mean score)", "",
+             "| agent | " + " | ".join(types) + " | overall |",
+             "|---|" + "|".join(["---"] * (len(types) + 1)) + "|"]
+    for agent, recs in per_agent_records.items():
+        cells = []
+        for t in types:
+            sub = [r for r in recs if r["corruption_type"] == t]
+            if sub:
+                sr = _mean([1.0 if r["terminal_pass"] else 0.0 for r in sub])
+                ms = _mean([r["terminal_score"] for r in sub])
+                cells.append(f"{_fmt(sr, 1)} · {_fmt(ms)} (n={len(sub)})")
+            else:
+                cells.append("n/a")
+        sr = _mean([1.0 if r["terminal_pass"] else 0.0 for r in recs])
+        ms = _mean([r["terminal_score"] for r in recs])
+        cells.append(f"{_fmt(sr, 1)} · {_fmt(ms)}")
+        lines.append(f"| {agent} | " + " | ".join(cells) + " |")
+    with open(path, "a") as f:
+        f.write("\n".join(lines) + "\n")
+
+
+def load_split(split):
+    if split == "all":
+        out = []
+        for s in ("test", "train"):
+            out += [json.loads(l) for l in open(os.path.join(HERE, "data", f"instances_{s}.jsonl"))]
+        return out
+    return [json.loads(l) for l in open(os.path.join(HERE, "data", f"instances_{split}.jsonl"))]
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--agents", default="random,oracle")
-    ap.add_argument("--split", default="test")
+    ap.add_argument("--split", default="test", help="test | train | all")
     ap.add_argument("--run", default="run1")
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--per-type", type=int, default=None,
+                    help="stratified: sample N instances of EACH corruption type (scale/translate/rotate)")
     ap.add_argument("--shuffle", action="store_true", help="seeded shuffle before --limit (spread across shapes)")
     ap.add_argument("--budget", type=int, default=6)
     ap.add_argument("--feedback", default="headline", choices=["headline", "scalar"])
@@ -133,16 +168,32 @@ if __name__ == "__main__":
                     help="rebuild the report from existing runs/<run>/<agent>/records.jsonl, no runs")
     args = ap.parse_args()
 
-    instances = [json.loads(l) for l in
-                 open(os.path.join(HERE, "data", f"instances_{args.split}.jsonl"))]
-    if args.shuffle:
-        random.Random(args.seed).shuffle(instances)
-    if args.limit:
-        instances = instances[:args.limit]
+    instances = load_split(args.split)
+    rng = random.Random(args.seed)
+    if args.per_type:
+        pool = defaultdict(list)
+        for r in instances:
+            pool[r["corruption"]["type"]].append(r)
+        sel = []
+        for t in ("scale", "translate", "rotate"):
+            g = list(pool.get(t, []))
+            rng.shuffle(g)
+            take = g[:args.per_type]
+            if len(take) < args.per_type:
+                print(f"WARNING: only {len(take)} '{t}' instances available (wanted {args.per_type})")
+            sel += take
+        rng.shuffle(sel)                       # interleave types so progress shows all kinds
+        instances = sel
+    else:
+        if args.shuffle:
+            rng.shuffle(instances)
+        if args.limit:
+            instances = instances[:args.limit]
     run_dir = os.path.join(HERE, "runs", args.run)
     os.makedirs(run_dir, exist_ok=True)
 
     per_agent = {}
+    per_agent_records = {}
     for agent_name in [a.strip() for a in args.agents.split(",") if a.strip()]:
         if args.report_only:
             path = os.path.join(run_dir, agent_name, "records.jsonl")
@@ -150,11 +201,13 @@ if __name__ == "__main__":
         else:
             records = run_agent(agent_name, instances, run_dir, args.budget, args.feedback, args.seed)
         per_agent[agent_name] = compute_metrics(records)
+        per_agent_records[agent_name] = records
         print(f"  -> {agent_name}: success={per_agent[agent_name]['success_rate']:.2f} "
               f"score={per_agent[agent_name]['mean_score']:.2f}", flush=True)
 
     report = write_report(args.run, args.split, per_agent,
                           os.path.join(HERE, "reports", f"{args.run}.md"))
+    append_per_type(report, per_agent_records)
     print(f"\nreport -> {report}")
     print(json.dumps({a: {k: v for k, v in m.items() if not k.endswith("_ci")}
                       for a, m in per_agent.items()}, indent=2))
