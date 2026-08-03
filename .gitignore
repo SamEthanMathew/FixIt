@@ -3,6 +3,13 @@ data.zip
 *.zip
 /data/
 
+# PartNet-Mobility meshes (fetch via text_fixit/download_partnet_mobility.py)
+text_fixit/assets/
+# Generated episode renders / trajectories
+text_fixit/runs/
+# graphify knowledge-graph cache (tool output)
+graphify-out/
+
 # Python bytecode
 __pycache__/
 *.py[cod]
