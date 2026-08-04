@@ -43,26 +43,37 @@ def _load(name):
         return Template(f.read())
 
 
-def _msg(role, text):
-    """One conversation turn for the google-genai `contents` list (role: 'user' | 'model')."""
-    return {"role": role, "parts": [{"text": text}]}
+def _msg(role, text, images=None):
+    """One conversation turn (role: 'user' | 'model'), with optional attached PIL images."""
+    return {"role": role, "text": text, "images": images or []}
+
+
+def _png_bytes(pil):
+    import io
+    buf = io.BytesIO()
+    pil.save(buf, format="PNG")
+    return buf.getvalue()
 
 
 class GeminiAgent(Agent):
-    def __init__(self, oneshot=False, model=None, temperature=0.7, max_tokens=800,
-                 history="window3"):
+    IMAGE_HISTORY_WINDOW = 2            # attach actual images only for the last N user turns
+
+    def __init__(self, oneshot=False, model=None, temperature=0.7, max_tokens=8192,
+                 history="window3", thinking=True):
         assert history in ("window3", "full")
         self.oneshot = oneshot
         self.history = history           # "window3": stateless call w/ last-3 summary each turn
         #                                  "full":    one accumulating conversation per object
+        self.thinking = thinking
         if oneshot:
             self.name = "oneshot_gemini"
         else:
             self.name = "loop_gemini" if history == "window3" else "loop_gemini_full"
         self.model = model or os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
         self.temperature = temperature
-        self.max_tokens = max_tokens
+        self.max_tokens = max_tokens     # high: with thinking ON the thinking tokens count here
         self._system_tmpl = _load("system.txt")
+        self._system_img_tmpl = _load("system_image.txt")
         self._step_tmpl = _load("step.txt")
         self._client = None
         self._messages = []             # running transcript for history="full"
@@ -81,7 +92,9 @@ class GeminiAgent(Agent):
 
     def _system_prompt(self, env):
         cat = env.instance.get("category", "Refrigerator")
-        return self._system_tmpl.safe_substitute(
+        tmpl = self._system_img_tmpl if getattr(env, "state_modality", "text") == "image" \
+            else self._system_tmpl
+        return tmpl.safe_substitute(
             category=cat, instance_id=env.instance["id"],
             function_text=FUNCTION_TEXT.get(cat, ""), success_text=SUCCESS_TEXT.get(cat, ""),
             part_table=env.table_text, value_grid=VALUE_GRID_STR, angle_grid=ANGLE_GRID_STR,
@@ -94,9 +107,18 @@ class GeminiAgent(Agent):
         lines = []
         for h in hist:
             ev = h["eval"]
-            crit = "PASS" if ev["PASS"] else "; ".join(env._failed_criteria(ev)) or "not restored"
-            extra = f"  score={ev['score']:.3f}" if env.feedback == "scalar" else ""
-            lines.append(f"  {h['action_str']} -> {crit}{extra}")
+            if ev["PASS"]:
+                crit = "PASS"
+            else:
+                parts = []
+                if env.show_deviation and not ev["within_tol"]:
+                    parts.append(f"off {ev['deviation_mm']:.0f}mm")
+                if not ev["closes"]:
+                    parts.append("jams")
+                if ev["collides"]:
+                    parts.append("collides")
+                crit = "; ".join(parts) or "not yet correct"
+            lines.append(f"  {h['action_str']} -> {crit}")
         return "\n".join(lines)
 
     def _step_prompt(self, env, obs, budget_left):
@@ -131,8 +153,9 @@ class GeminiAgent(Agent):
                     f"Your previous output was invalid: {ctx['retry_error']}. "
                     "Re-emit exactly one <think> and one <act> block with a valid action."))
             else:
-                self._messages.append(_msg("user", self._obs_message(env, obs, ctx["budget_left"])))
-            raw = self._generate_messages(system, self._messages)
+                self._messages.append(_msg("user", self._obs_message(env, obs, ctx["budget_left"]),
+                                           images=obs.get("images", [])))
+            raw = self._generate_messages(system)
             self._messages.append(_msg("model", raw))
             return raw
 
@@ -150,12 +173,36 @@ class GeminiAgent(Agent):
         from google.genai import types
         cfg = types.GenerateContentConfig(system_instruction=None, temperature=self.temperature,
                                           max_output_tokens=self.max_tokens)
+        # thinking ON (dynamic budget) when enabled -- max_output_tokens is set high so the visible
+        # <act> is not starved by thinking tokens.
         if self.model.startswith("gemini-2.5"):
             try:
-                cfg.thinking_config = types.ThinkingConfig(thinking_budget=0)
+                cfg.thinking_config = types.ThinkingConfig(thinking_budget=(-1 if self.thinking else 0))
             except Exception:  # noqa: BLE001 - older SDKs without ThinkingConfig
                 pass
         return cfg
+
+    def _to_contents(self):
+        """Serialize the running transcript to google-genai contents. Full TEXT history is kept;
+        actual images are attached only for the last IMAGE_HISTORY_WINDOW user turns (older turns
+        keep their text, with a note) so requests stay bounded."""
+        from google.genai import types
+        user_idxs = [i for i, m in enumerate(self._messages) if m["role"] == "user"]
+        keep = set(user_idxs[-self.IMAGE_HISTORY_WINDOW:])
+        contents = []
+        for i, m in enumerate(self._messages):
+            has_imgs = bool(m.get("images"))
+            if m["role"] == "user" and has_imgs and i not in keep:
+                parts = [types.Part.from_text(text=m["text"] +
+                         "\n[earlier rendered views omitted to save space]")]
+            else:
+                parts = [types.Part.from_text(text=m["text"])]
+                if m["role"] == "user" and has_imgs:
+                    parts += [types.Part.from_bytes(data=_png_bytes(im), mime_type="image/png")
+                              for im in m["images"]]
+            contents.append(types.Content(role=("model" if m["role"] == "model" else "user"),
+                                          parts=parts))
+        return contents
 
     def _call(self, contents, system, retries=3):
         client = self._client_lazy()
@@ -173,10 +220,9 @@ class GeminiAgent(Agent):
                 time.sleep(1.5 * (i + 1))
         return f"<think>api error: {last}</think><act>COMMIT NO_FIX()</act>"
 
-    def _generate_messages(self, system, messages):
-        return self._call(messages, system)
+    def _generate_messages(self, system):
+        return self._call(self._to_contents(), system)
 
     def _generate(self, system, step, retries=3):
-        # single-message (window3 / oneshot) call. gemini-2.5-* thinking is disabled in _cfg so the
-        # visible reply isn't starved; on failure returns a parseable fallback so the episode ends.
+        # single-message (window3 / oneshot) call; on failure returns a parseable fallback.
         return self._call(step, system, retries=retries)

@@ -72,7 +72,8 @@ def run_episode(env, agent, instance, prompts=None, verbose=False):
         "id": instance["id"],
         "base": instance["base"],
         "agent": agent.name,
-        "feedback": env.feedback,
+        "state_modality": env.state_modality,
+        "show_deviation": env.show_deviation,
         "corruption_type": instance["corruption"]["type"],
         "terminal_pass": bool(ev["PASS"]),
         "terminal_score": float(ev["score"]),
@@ -115,13 +116,15 @@ if __name__ == "__main__":
     ap.add_argument("--split", default="test")
     ap.add_argument("--index", type=int, default=0, help="which instance in the split")
     ap.add_argument("--budget", type=int, default=6)
-    ap.add_argument("--feedback", default="headline", choices=["headline", "scalar"])
+    ap.add_argument("--modality", default="text", choices=["text", "image"])
+    ap.add_argument("--deviation", default="on", choices=["on", "off"])
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
 
     insts = [json.loads(l) for l in open(os.path.join(HERE, "data", f"instances_{args.split}.jsonl"))]
     inst = insts[args.index]
-    env = FridgeRepairEnv(budget=args.budget, feedback=args.feedback)
+    env = FridgeRepairEnv(budget=args.budget, state_modality=args.modality,
+                          show_deviation=(args.deviation == "on"))
     agent = _make_agent(args.agent)
     rec = run_episode(env, agent, inst, verbose=args.verbose)
     env.close()

@@ -83,8 +83,8 @@ def compute_metrics(records):
     }
 
 
-def run_agent(agent_name, instances, run_dir, budget, feedback, seed):
-    env = FridgeRepairEnv(budget=budget, feedback=feedback)
+def run_agent(agent_name, instances, run_dir, budget, modality, deviation, seed):
+    env = FridgeRepairEnv(budget=budget, state_modality=modality, show_deviation=deviation)
     agent = _make_agent(agent_name, seed=seed)
     out_dir = os.path.join(run_dir, agent_name)
     os.makedirs(out_dir, exist_ok=True)
@@ -197,7 +197,8 @@ if __name__ == "__main__":
                     help="stratified: sample N instances of EACH corruption type (scale/translate/rotate)")
     ap.add_argument("--shuffle", action="store_true", help="seeded shuffle before --limit (spread across shapes)")
     ap.add_argument("--budget", type=int, default=6)
-    ap.add_argument("--feedback", default="headline", choices=["headline", "scalar"])
+    ap.add_argument("--modality", default="text", choices=["text", "image"])
+    ap.add_argument("--deviation", default="on", choices=["on", "off"])
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--report-only", action="store_true",
                     help="rebuild the report from existing runs/<run>/<agent>/records.jsonl, no runs")
@@ -234,7 +235,8 @@ if __name__ == "__main__":
             path = os.path.join(run_dir, agent_name, "records.jsonl")
             records = [json.loads(l) for l in open(path)]
         else:
-            records = run_agent(agent_name, instances, run_dir, args.budget, args.feedback, args.seed)
+            records = run_agent(agent_name, instances, run_dir, args.budget, args.modality,
+                                (args.deviation == "on"), args.seed)
         per_agent[agent_name] = compute_metrics(records)
         per_agent_records[agent_name] = records
         print(f"  -> {agent_name}: success={per_agent[agent_name]['success_rate']:.2f} "

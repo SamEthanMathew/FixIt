@@ -31,6 +31,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import canonical  # noqa: E402
 import corruption as corr  # noqa: E402
 import geom  # noqa: E402
+import render as R  # noqa: E402
+import views  # noqa: E402
 from evaluation import evaluate_repair  # noqa: E402
 from part_table import build_part_table  # noqa: E402
 from quiet import quiet  # noqa: E402
@@ -75,10 +77,16 @@ def _part_states(urdf, id_map):
 
 
 class FridgeRepairEnv:
-    def __init__(self, budget=6, feedback="headline"):
-        assert feedback in ("headline", "scalar")
+    """Two orthogonal observation toggles (the modality x deviation 2x2):
+      state_modality "text"  -> per-part geometry text; "image" -> rendered hero+filmstrip views.
+      show_deviation True    -> include the numeric 'pose off by N mm' gradient; False -> hide it
+                                (pass/fail + physical symptoms only; agent must infer direction)."""
+
+    def __init__(self, budget=6, state_modality="text", show_deviation=True):
+        assert state_modality in ("text", "image")
         self.budget = budget
-        self.feedback = feedback
+        self.state_modality = state_modality
+        self.show_deviation = show_deviation
         self.client = p.connect(p.DIRECT)
 
     def close(self):
@@ -100,10 +108,19 @@ class FridgeRepairEnv:
         self.history = []          # list of dicts: {mode, action_str, eval}
         self.best = None           # best simulated {eval, spec, action_str, score}
         self.terminal = False
-        ev = self._evaluate_spec(None)     # broken as-is
+        self._img_cache = {}       # action_str -> [PIL images] (SIMULATE is deterministic per action)
+        self._annotated = None
+        if self.state_modality == "image":
+            self.center, self.dist = R.camera_from_urdf(self.healthy)   # locked to healthy shape
+            with quiet():
+                self._annotated = views.annotated_part_view(self.broken, self.id_map,
+                                                            self.center, self.dist)
+        ev = self._evaluate_spec(None, "broken")     # broken as-is
         self.reset_eval = ev
-        return {"text": self._render(ev, header="BROKEN OBJECT (initial)"),
-                "eval": ev, "part_table": self.table_text, "target_pid": self.target_pid}
+        obs = {"text": self._render(ev, header="BROKEN OBJECT (initial)"),
+               "eval": ev, "part_table": self.table_text, "target_pid": self.target_pid,
+               "images": self._obs_images(ev, reset=True)}
+        return obs
 
     def step(self, parsed):
         """parsed: action_parser.parse() result. Returns (observation, terminal, info)."""
@@ -117,7 +134,7 @@ class FridgeRepairEnv:
         mode = parsed["mode"]
         spec = None if act["type"] == "no_fix" else _inject_canonical(act["spec"], self.broken)
         action_str = self._action_str(act)
-        ev = self._evaluate_spec(spec)
+        ev = self._evaluate_spec(spec, action_str)
 
         if mode == "SIMULATE":
             self.sim_count += 1
@@ -127,7 +144,7 @@ class FridgeRepairEnv:
             if self.best is None or ev["score"] > self.best["eval"]["score"]:
                 self.best = {"eval": ev, "spec": spec, "action_str": action_str}
             obs = {"text": self._render(ev, header=f"SIMULATE result ({action_str})"),
-                   "eval": ev, "invalid": False}
+                   "eval": ev, "invalid": False, "images": self._obs_images(ev)}
             return obs, False, {"budget_left": self.budget - self.sim_count}
 
         # COMMIT (or NO_FIX committed)
@@ -135,7 +152,8 @@ class FridgeRepairEnv:
         self.history.append({"mode": "COMMIT", "action_str": action_str, "eval": ev,
                              "backtrack": parsed["backtrack"], "think": parsed.get("think", "")})
         return ({"text": self._render(ev, header=f"COMMITTED ({action_str})"), "eval": ev,
-                 "invalid": False}, True, {"committed_action": action_str})
+                 "invalid": False, "images": self._obs_images(ev)}, True,
+                {"committed_action": action_str})
 
     def auto_commit_best(self):
         """Budget exhausted with no COMMIT: commit the best-scoring simulated fix (or the broken
@@ -160,9 +178,11 @@ class FridgeRepairEnv:
             return f"ROTATE({act['part_id']}, {ax}, {math.degrees(s['value']):.1f})"
         return f"SCALE({act['part_id']}, {ax}, {s['value']:.4f})"
 
-    def _evaluate_spec(self, spec):
+    def _evaluate_spec(self, spec, action_str="broken"):
         """Apply spec to a COPY of the broken URDF (or evaluate broken as-is if spec is None),
-        score it against the contract, and capture the candidate's part states for the observation."""
+        score it against the contract, capture part states, and (image modality) render the
+        candidate's views -- cached by action_str, since SIMULATE re-applies to the original broken
+        object, so a repeated action yields identical geometry and identical renders."""
         if spec is None:
             cand = self.broken
             tmp = None
@@ -172,34 +192,58 @@ class FridgeRepairEnv:
         with quiet():
             ev = evaluate_repair(cand, self.healthy, self.joint, self.link, client=self.client)
         ev = dict(ev, states=_part_states(cand, self.id_map))
+        if self.state_modality == "image":
+            ev = dict(ev, images=self._render_views(cand, action_str))
         if tmp is not None and os.path.exists(tmp):
             os.remove(tmp)
         return ev
 
-    def _failed_criteria(self, ev):
-        out = []
-        if not ev["within_tol"]:
-            out.append(f"pose off by {ev['deviation_mm']:.0f} mm (tolerance {ev['tau_mm']:.0f} mm)")
-        if not ev["closes"]:
-            out.append(f"door does not close (jams at {ev['closed_angle_deg']:.0f} deg)")
-        if ev["collides"]:
-            pair = ev["collision_pair"] or "parts"
-            out.append(f"part collision ({pair}, {ev['collision_excess_mm']:.0f} mm over healthy)")
-        return out
+    def _render_views(self, cand_urdf, action_str):
+        if action_str in self._img_cache:
+            return self._img_cache[action_str]
+        with quiet():
+            imgs = views.hero_views(cand_urdf, self.center, self.dist)
+            imgs.append(views.closing_filmstrip(cand_urdf, self.joint, self.center, self.dist))
+        self._img_cache[action_str] = imgs
+        return imgs
+
+    def _obs_images(self, ev, reset=False):
+        """Images attached to an observation: candidate hero A/B + closing filmstrip, plus the
+        labeled part view once at reset. Empty for the text conditions."""
+        if self.state_modality != "image":
+            return []
+        imgs = list(ev.get("images", []))
+        if reset and self._annotated is not None:
+            imgs = [self._annotated] + imgs
+        return imgs
 
     def _render(self, ev, header):
-        states = ev.get("states", {})
-        lines = [header, "", "part states (geometry centre and size in the part's own X,Y,Z axes):"]
-        for pid, pt in self.id_map.items():
-            c, e = states.get(pt["joint"], ([0, 0, 0], [0, 0, 0]))
-            lines.append(f"  {pid} {pt['name']:<14} center=[{c[0]:.3f},{c[1]:.3f},{c[2]:.3f}] "
-                         f"size(w,d,h)=[{e[0]:.3f},{e[1]:.3f},{e[2]:.3f}]")
-        failed = self._failed_criteria(ev)
+        lines = [header, ""]
+        if self.state_modality == "text":
+            lines.append("part states (geometry centre and size in the part's own X,Y,Z axes):")
+            for pid, pt in self.id_map.items():
+                c, e = ev.get("states", {}).get(pt["joint"], ([0, 0, 0], [0, 0, 0]))
+                lines.append(f"  {pid} {pt['name']:<14} center=[{c[0]:.3f},{c[1]:.3f},{c[2]:.3f}] "
+                             f"size(w,d,h)=[{e[0]:.3f},{e[1]:.3f},{e[2]:.3f}]")
+        else:
+            lines.append("(see the attached views: two hero angles + a closing filmstrip of the "
+                         "target door swinging shut)")
         lines.append("")
+
+        # deviation gradient (the numeric mm) is gated; pass/fail + physical symptoms always shown
+        dev = ([f"pose off by {ev['deviation_mm']:.0f} mm (tolerance {ev['tau_mm']:.0f} mm)"]
+               if self.show_deviation and not ev["within_tol"] else [])
+        phys = []
+        if not ev["closes"]:
+            phys.append(f"door does not close (jams at {ev['closed_angle_deg']:.0f} deg)")
+        if ev["collides"]:
+            phys.append(f"part collision ({ev['collision_pair'] or 'parts'}, "
+                        f"{ev['collision_excess_mm']:.0f} mm over healthy)")
         if ev["PASS"]:
             lines.append("criteria: ALL PASS (door within tolerance, closes, no collision)")
         else:
-            lines.append("failed criteria: " + "; ".join(failed))
-        if self.feedback == "scalar":
-            lines.append(f"functional_score = {ev['score']:.3f}  (PASS threshold = within tol & closes & no collision)")
+            items = dev + phys
+            if not items:                       # -deviation and physically fine: pose still wrong
+                items = ["the door is not yet in its correct position"]
+            lines.append("failed criteria: " + "; ".join(items))
         return "\n".join(lines)
