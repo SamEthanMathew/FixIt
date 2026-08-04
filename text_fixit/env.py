@@ -88,6 +88,9 @@ class FridgeRepairEnv:
         self.state_modality = state_modality
         self.show_deviation = show_deviation
         self.client = p.connect(p.DIRECT)
+        # unique token so concurrent runs (the 4 conditions share the same instances) never clobber
+        # each other's temp candidate URDF written beside the meshes.
+        self._tok = f"{os.getpid()}_{id(self) & 0xffff}"
 
     def close(self):
         if self.client is not None:
@@ -187,7 +190,7 @@ class FridgeRepairEnv:
             cand = self.broken
             tmp = None
         else:
-            tmp = corr.apply(self.broken, spec, f"_cand_{self.instance['id']}.urdf")
+            tmp = corr.apply(self.broken, spec, f"_cand_{self.instance['id']}_{self._tok}.urdf")
             cand = tmp
         with quiet():
             ev = evaluate_repair(cand, self.healthy, self.joint, self.link, client=self.client)
