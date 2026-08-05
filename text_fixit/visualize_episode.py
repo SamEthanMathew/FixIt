@@ -154,6 +154,7 @@ def main():
     ap.add_argument("--id", default=None, help="instance id (default: first solved, else first)")
     ap.add_argument("--split", default="test")
     ap.add_argument("--out", default=os.path.join(HERE, "runs", "gallery"))
+    ap.add_argument("--label", default=None, help="output basename (default: episode_<agent>_<id>)")
     args = ap.parse_args()
 
     recs = [json.loads(l) for l in
@@ -167,9 +168,10 @@ def main():
     rec_inst = insts[record["id"]]
     print(f"episode {record['id']}  agent={record['agent']}  turns={len(record['history'])}  "
           f"terminal_pass={record['terminal_pass']}")
+    base = args.label or f"episode_{record['agent']}_{record['id']}"
     build(rec_inst, record,
-          os.path.join(args.out, f"episode_{record['agent']}_{record['id']}.gif"),
-          os.path.join(args.out, f"episode_{record['agent']}_{record['id']}.png"))
+          os.path.join(args.out, f"{base}.gif"),
+          os.path.join(args.out, f"{base}.png"))
 
 
 if __name__ == "__main__":
