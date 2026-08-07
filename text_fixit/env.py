@@ -25,6 +25,7 @@ import math
 import os
 import sys
 
+import numpy as np
 import pybullet as p
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -113,6 +114,8 @@ class FridgeRepairEnv:
         self.terminal = False
         self._img_cache = {}       # action_str -> [PIL images] (SIMULATE is deterministic per action)
         self._annotated = None
+        # baseline reference: the ORIGINAL broken part geometry (link frame), shown every turn
+        self._broken_states = _part_states(self.broken, self.id_map)
         if self.state_modality == "image":
             self.center, self.dist = R.camera_from_urdf(self.healthy)   # locked to healthy shape
             with quiet():
@@ -197,9 +200,37 @@ class FridgeRepairEnv:
         ev = dict(ev, states=_part_states(cand, self.id_map))
         if self.state_modality == "image":
             ev = dict(ev, images=self._render_views(cand, action_str))
+        else:
+            # begin/end of the door's activation trajectory: world centres with the target door
+            # driven OPEN (90 deg, start) then SHUT (0 deg, end) -- shows the swing / whether it seats
+            ev = dict(ev, act_start=self._world_states(cand, math.pi / 2),
+                      act_end=self._world_states(cand, 0.0))
         if tmp is not None and os.path.exists(tmp):
             os.remove(tmp)
         return ev
+
+    def _world_states(self, urdf, angle):
+        """Per-part WORLD geometry centre with the target door driven to `angle` (others closed).
+        Reading it at door-open then door-shut gives the two ends of the activation trajectory."""
+        with quiet():
+            body = p.loadURDF(_abs(urdf), [0, 0, 0], useFixedBase=1, physicsClientId=self.client)
+            jidx = {}
+            for j in range(p.getNumJoints(body, physicsClientId=self.client)):
+                jidx[p.getJointInfo(body, j, physicsClientId=self.client)[1].decode()] = j
+            for jn, j in jidx.items():
+                p.resetJointState(body, j, angle if jn == self.joint else 0.0,
+                                  physicsClientId=self.client)
+            out = {}
+            for pt in self.id_map.values():
+                ls = p.getLinkState(body, jidx[pt["joint"]], computeForwardKinematics=True,
+                                    physicsClientId=self.client)
+                Rw = np.array(p.getMatrixFromQuaternion(ls[5])).reshape(3, 3)
+                tw = np.array(ls[4])
+                lf = geom.link_frame_points(_abs(urdf), pt["link"])
+                c = (lf @ Rw.T + tw).mean(0) if len(lf) else np.zeros(3)
+                out[pt["joint"]] = [float(x) for x in c]
+            p.removeBody(body, physicsClientId=self.client)
+        return out
 
     def _render_views(self, cand_urdf, action_str):
         if action_str in self._img_cache:
@@ -223,11 +254,21 @@ class FridgeRepairEnv:
     def _render(self, ev, header):
         lines = [header, ""]
         if self.state_modality == "text":
-            lines.append("part states (geometry centre and size in the part's own X,Y,Z axes):")
+            lines.append("original broken (reference) - part geometry [centre; size] in each part's X,Y,Z:")
             for pid, pt in self.id_map.items():
-                c, e = ev.get("states", {}).get(pt["joint"], ([0, 0, 0], [0, 0, 0]))
-                lines.append(f"  {pid} {pt['name']:<14} center=[{c[0]:.3f},{c[1]:.3f},{c[2]:.3f}] "
-                             f"size(w,d,h)=[{e[0]:.3f},{e[1]:.3f},{e[2]:.3f}]")
+                c, e = self._broken_states.get(pt["joint"], ([0, 0, 0], [0, 0, 0]))
+                lines.append(f"  {pid} {pt['name']:<14} centre=[{c[0]:.3f},{c[1]:.3f},{c[2]:.3f}] "
+                             f"size=[{e[0]:.3f},{e[1]:.3f},{e[2]:.3f}]")
+            st, en = ev.get("act_start", {}), ev.get("act_end", {})
+            lines.append("")
+            lines.append("your attempt - world centres at the START of activation (target door open):")
+            for pid, pt in self.id_map.items():
+                c = st.get(pt["joint"], [0, 0, 0])
+                lines.append(f"  {pid} {pt['name']:<14} centre=[{c[0]:.3f},{c[1]:.3f},{c[2]:.3f}]")
+            lines.append("your attempt - world centres at the END of activation (target door shut/jammed):")
+            for pid, pt in self.id_map.items():
+                c = en.get(pt["joint"], [0, 0, 0])
+                lines.append(f"  {pid} {pt['name']:<14} centre=[{c[0]:.3f},{c[1]:.3f},{c[2]:.3f}]")
         else:
             lines.append("(see the attached views: two hero angles + a closing filmstrip of the "
                          "target door swinging shut)")

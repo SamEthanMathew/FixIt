@@ -32,10 +32,9 @@ SUCCESS_TEXT = {
                     "still closes, and no parts interpenetrate.",
 }
 
-VALUE_GRID_STR = f"multiples of {grids.TRANSLATE_STEP} m up to +/-{max(grids.VALUE_GRID)} m"
-ANGLE_GRID_STR = f"multiples of {int(grids.ANGLE_STEP)} deg up to +/-{int(max(grids.ANGLE_GRID))} deg"
-SCALE_GRID_STR = (f"log-spaced factors {min(grids.SCALE_GRID):.2f}..{max(grids.SCALE_GRID):.2f} "
-                  f"(reciprocal-symmetric, e.g. 0.74, 0.82, 0.90, 1.11, 1.22, 1.35)")
+VALUE_GRID_STR = f"any value in [-{grids.TRANSLATE_MAX}, {grids.TRANSLATE_MAX}] m (continuous)"
+ANGLE_GRID_STR = f"any value in [-{int(grids.ANGLE_MAX)}, {int(grids.ANGLE_MAX)}] deg (continuous)"
+SCALE_GRID_STR = f"any multiplier in [{grids.SCALE_MIN}, {grids.SCALE_MAX}] (continuous)"
 
 
 def _load(name):
@@ -136,9 +135,10 @@ class GeminiAgent(Agent):
         """A single turn's user message for history='full' (no re-injected history block -- the
         prior turns are already in the conversation)."""
         if budget_left <= 0:
-            note = "\nBudget exhausted -- you MUST COMMIT now."
+            note = "\nNo SIMULATE calls left - COMMIT now (your best attempt if none has passed)."
         else:
-            note = f"\nBudget: {budget_left} SIMULATE call(s) remaining."
+            note = (f"\nSIMULATE calls remaining: {budget_left}. Keep simulating and refining until "
+                    "one returns ALL PASS; do not commit before then.")
         return (f"{obs['text']}{note}\n\nOutput your next action now "
                 "(one <think> block and one <act> block).")
 

@@ -34,6 +34,25 @@ _SCALE_K_MAX = 6                  # f in [exp(-0.6), exp(0.6)] ~ [0.549, 1.822]
 SCALE_GRID = [math.exp(SCALE_LOG_STEP * k)
               for k in range(-_SCALE_K_MAX, _SCALE_K_MAX + 1) if k != 0]
 
+# ------------------------------------------------------------------ CONTINUOUS bounds
+# The agent's action space is CONTINUOUS within these min/max (the grids above are kept only for
+# CORRUPTION sampling, so break targets stay reproducible; the agent is not snapped to them).
+TRANSLATE_MAX = _TRANSLATE_MAX                      # +/- 0.40 m
+ANGLE_MAX = _ANGLE_MAX                              # +/- 60 deg
+SCALE_MIN = round(math.exp(-SCALE_LOG_STEP * _SCALE_K_MAX), 3)   # ~0.549
+SCALE_MAX = round(math.exp(SCALE_LOG_STEP * _SCALE_K_MAX), 3)    # ~1.822
+
+
+def clamp_range(value, ctype):
+    """Clamp a CONTINUOUS action value into its valid range (no snapping)."""
+    if ctype == "translate":
+        return max(-TRANSLATE_MAX, min(TRANSLATE_MAX, value))
+    if ctype == "rotate":                          # degrees
+        return max(-ANGLE_MAX, min(ANGLE_MAX, value))
+    if ctype == "scale":
+        return max(SCALE_MIN, min(SCALE_MAX, value))
+    return value
+
 
 def snap(value, grid):
     """Return the grid entry nearest to `value` (grids hold POSITIVE magnitudes; sign is

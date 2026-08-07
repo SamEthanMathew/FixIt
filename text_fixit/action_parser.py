@@ -103,14 +103,13 @@ def parse(text, id_map):
     ctype = {"TRANSLATE": "translate", "ROTATE": "rotate", "SCALE": "scale"}[op]
 
     if ctype == "translate":
-        value = grids.clamp_to_grid(raw, grids.VALUE_GRID)          # metres
+        value = grids.clamp_range(raw, "translate")                 # metres, continuous
     elif ctype == "rotate":
-        deg = grids.clamp_to_grid(raw, grids.ANGLE_GRID)            # degrees -> radians
-        value = math.radians(deg)
+        value = math.radians(grids.clamp_range(raw, "rotate"))      # degrees -> radians, continuous
     else:  # scale
         if raw <= 0:
             return _err("scale factor must be positive", think, backtrack)
-        value = grids.clamp_to_grid(raw, grids.SCALE_GRID)
+        value = grids.clamp_range(raw, "scale")                     # multiplier, continuous
 
     spec = {"type": ctype, "axis": axis, "value": value,
             "link": part["link"], "joint": part["joint"]}

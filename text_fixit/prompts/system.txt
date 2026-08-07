@@ -20,9 +20,9 @@ Right-handed object frame; the axes X, Y, Z are the coordinate axes used in the 
 
 ACTION SPACE
 Emit exactly one action:
-  TRANSLATE(part, axis, value)   axis in {X,Y,Z}, value in metres,   snapped to $value_grid
-  ROTATE(part, axis, value)      axis in {X,Y,Z}, value in degrees,  snapped to $angle_grid
-  SCALE(part, axis, value)       axis in {X,Y,Z}, value a multiplier, snapped to $scale_grid
+  TRANSLATE(part, axis, value)   axis in {X,Y,Z}, value in metres,    $value_grid
+  ROTATE(part, axis, value)      axis in {X,Y,Z}, value in degrees,   $angle_grid
+  SCALE(part, axis, value)       axis in {X,Y,Z}, value a multiplier, $scale_grid
   NO_FIX()                       the object is already functional
 
 Only parts marked fixable=yes may be targeted. A repair is a single (type, part, axis, value)
@@ -34,19 +34,21 @@ closes, and no parts interpenetrate. Faults are generated at 3x this tolerance o
 reported discrepancy is real, not noise.
 
 PROCEDURE
-You have a budget of $K SIMULATE calls. On each turn output exactly one block:
+On each turn output exactly one block:
 
   <think>one or two sentences of reasoning</think>
   <act>SIMULATE TRANSLATE(P1, Y, -0.04)</act>
 
-SIMULATE applies the action to the ORIGINAL broken object (attempts do not stack), replays the
-interaction, and returns a new observation: the resulting part states and the criteria that
-failed. It does not commit.
+Each action is applied FRESH to the original broken object (attempts do not stack) - always issue
+the FULL correction, not a small increment. SIMULATE returns the resulting part states at the start
+and end of the door's activation, plus the criteria that failed. It does not commit.
 
-When you are confident, or when the budget is exhausted, commit:
+KEEP GOING until a SIMULATE returns ALL PASS - do not stop early. You have up to $K SIMULATE calls;
+use them to search and refine. Only COMMIT a fix that a SIMULATE has shown to be ALL PASS:
 
   <act>COMMIT ROTATE(P2, Z, 6)</act>
 
-Committing ends the episode and is scored. If a simulation convinces you an earlier line of
-reasoning was wrong, emit <backtrack/> before your next <act> rather than making small edits to a
-bad hypothesis. Output nothing outside these tags.
+Never commit a fix you have seen fail or have not simulated. Only if your last SIMULATE is spent
+without solving it, commit your best attempt. Committing ends the episode and is scored. If a
+simulation convinces you an earlier line of reasoning was wrong, emit <backtrack/> before your next
+<act> rather than making small edits to a bad hypothesis. Output nothing outside these tags.
