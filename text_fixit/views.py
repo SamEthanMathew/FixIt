@@ -103,7 +103,7 @@ def open_closed_views(urdf, joint, center, dist, id_map, res=768):
     it. Replaces the cramped, dark closing filmstrip."""
     import math
     _, _, j2l = _render(urdf, center=center, dist=dist, res=res, want_seg=True)   # joint -> link idx
-    recolor, ci = {}, 0
+    recolor, ci, door_links = {}, 0, []
     for pt in id_map.values():                                    # colour by PART INDEX, not fault
         li = j2l.get(pt["joint"])
         if li is None:
@@ -111,10 +111,16 @@ def open_closed_views(urdf, joint, center, dist, id_map, res=768):
         if pt["corruptible"]:
             recolor[li] = PALETTE[ci % len(PALETTE)]
             ci += 1
+            door_links.append(li)
         else:
             recolor[li] = BODY_RGBA
+    # Both from the same front 3/4 (yaw -45). CLOSED shows the seam gap / overlap / oversize. OPEN is
+    # swung only ~55 deg (AJAR), not the full 90: at 90 a fridge door is edge-on / projects flush from
+    # a horizontal camera and reads as closed, whereas ~55 deg clearly shows each door angled out
+    # (swing + clearance) from the front, with no top-down view. (door_links kept for reference.)
+    _ = door_links
     closed, _, _ = _render(urdf, joint, 0.0, center, dist, res=res, yaw=-45, pitch=-30, recolor=recolor)
-    opened, _, _ = _render(urdf, joint, math.radians(90.0), center, dist, res=res, yaw=-45, pitch=-30,
+    opened, _, _ = _render(urdf, joint, math.radians(55.0), center, dist, res=res, yaw=-45, pitch=-30,
                            recolor=recolor, open_all=True)
     return [closed, opened]
 

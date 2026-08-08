@@ -275,11 +275,11 @@ class FridgeRepairEnv:
                 lines.append(f"  {pid} {pt['name']:<14} centre=[{c[0]:.3f},{c[1]:.3f},{c[2]:.3f}]")
         elif reset:
             lines.append("(attached: the labelled parts view, then the BROKEN object with all doors "
-                         "CLOSED and all doors OPEN)")
+                         "CLOSED and all doors OPEN (ajar))")
         else:
-            lines.append("(attached, in order: the ORIGINAL BROKEN object CLOSED then OPEN, then "
-                         "YOUR FIX applied to it CLOSED then OPEN - compare before vs after. Parts "
-                         "colour-coded by id as in the labelled view; body grey)")
+            lines.append("(attached, in order: the ORIGINAL BROKEN object CLOSED then OPEN (ajar), "
+                         "then YOUR FIX applied to it CLOSED then OPEN (ajar) - compare before vs "
+                         "after. Parts colour-coded by id as in the labelled view; body grey)")
         lines.append("")
 
         # deviation gradient (the numeric mm) is gated; pass/fail + physical symptoms always shown

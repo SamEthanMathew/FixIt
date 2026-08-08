@@ -16,9 +16,9 @@ door is which.
 WHAT YOU SEE
 Each SIMULATE observation gives FOUR rendered views (not text coordinates), so you can compare
 before vs after your fix:
-  - the ORIGINAL BROKEN object, all doors CLOSED, then all doors OPEN (90 degrees) - this "before"
+  - the ORIGINAL BROKEN object, all doors CLOSED, then all doors OPEN (swung ajar) - this "before"
     is the same every turn, because each action is applied fresh to the original broken object.
-  - YOUR FIX applied to it, all doors CLOSED, then all doors OPEN.
+  - YOUR FIX applied to it, all doors CLOSED, then all doors OPEN (swung ajar).
 CLOSED shows seating: a correct door sits flush with no gap and no overlap; a broken one leaves a
 visible gap or interpenetrates the body / another door. OPEN shows each door's size, tilt and whether
 it swings clear. Each part keeps the same colour as in the labelled reset view (P1, P2, ...); the
