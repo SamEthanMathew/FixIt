@@ -51,7 +51,7 @@ def _joint_to_link_index(body, cid):
 
 
 def _render(urdf, joint=None, angle=0.0, center=None, dist=None, res=384, yaw=45, pitch=-25,
-            recolor=None, textured=True, want_seg=False):
+            recolor=None, textured=True, want_seg=False, open_all=False):
     cid = p.connect(p.DIRECT)
     body = p.loadURDF(urdf, [0, 0, 0], useFixedBase=1, flags=R.LOAD_FLAGS, physicsClientId=cid)
     if recolor is not None:
@@ -62,7 +62,8 @@ def _render(urdf, joint=None, angle=0.0, center=None, dist=None, res=384, yaw=45
     doors = _revolute_joints(body)
     target = _joint_index_by_name(body, joint) if joint else None
     for jj in doors:
-        p.resetJointState(body, jj, angle if jj == target else 0.0, physicsClientId=cid)
+        p.resetJointState(body, jj, angle if (open_all or jj == target) else 0.0,
+                          physicsClientId=cid)
     p.performCollisionDetection(physicsClientId=cid)
     if center is None or dist is None:
         lo, hi = R._scene_aabb(body, cid)
@@ -91,26 +92,28 @@ def hero_views(urdf, center, dist, res=384):
     return [a, b]
 
 
-TARGET_RGBA = (0.16, 0.47, 0.84, 1)      # the door under repair -> distinct blue
+DOOR_RGBA = (0.45, 0.62, 0.85, 1)        # ALL fixable doors get the SAME colour (never single out
+#                                          the faulty one -- the agent must find which door is broken)
 
 
-def open_closed_views(urdf, joint, center, dist, res=768):
-    """The two informative states of the target door: CLOSED (0 deg, shows the seam/gap/collision)
-    and OPEN (90 deg, the door fully unoccluded so its size/tilt/placement is visible).
+def open_closed_views(urdf, joint, center, dist, id_map, res=768):
+    """Two states of the object: CLOSED (0 deg, shows seam gap / overlap / oversize) and OPEN (90 deg,
+    ALL doors swung out so size/tilt/clearance is visible).
 
-    Rendered with FLAT light materials (not the PartNet textures, which render near-black and hide the
-    geometry): body + other doors in light grey, the target door highlighted in blue so its gap /
-    overlap / tilt is legible. Replaces the cramped, dark closing filmstrip with two clean frames."""
+    Rendered with FLAT light materials (PartNet textures render near-black and hide the geometry):
+    every door the same light blue, body light grey. Crucially it does NOT reveal which door is
+    faulty -- all doors look identical and ALL are opened, so the agent must diagnose the fault
+    itself. Replaces the cramped, dark closing filmstrip."""
     import math
     _, _, j2l = _render(urdf, center=center, dist=dist, res=res, want_seg=True)   # joint -> link idx
-    recolor = {li: BODY_RGBA for li in j2l.values()}
-    if joint in j2l:
-        recolor[j2l[joint]] = TARGET_RGBA
-    # CLOSED and OPEN from the same 3/4 front angle: closed shows the seam gap / overlap / oversize;
-    # open shows the door swung out to 90 degrees.
+    recolor = {}
+    for pt in id_map.values():
+        li = j2l.get(pt["joint"])
+        if li is not None:
+            recolor[li] = DOOR_RGBA if pt["corruptible"] else BODY_RGBA
     closed, _, _ = _render(urdf, joint, 0.0, center, dist, res=res, yaw=-45, pitch=-30, recolor=recolor)
     opened, _, _ = _render(urdf, joint, math.radians(90.0), center, dist, res=res, yaw=-45, pitch=-30,
-                           recolor=recolor)
+                           recolor=recolor, open_all=True)
     return [closed, opened]
 
 

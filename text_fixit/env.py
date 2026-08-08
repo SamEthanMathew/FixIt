@@ -210,16 +210,17 @@ class FridgeRepairEnv:
         return ev
 
     def _world_states(self, urdf, angle):
-        """Per-part WORLD geometry centre with the target door driven to `angle` (others closed).
-        Reading it at door-open then door-shut gives the two ends of the activation trajectory."""
+        """Per-part WORLD geometry centre with ALL doors driven to `angle`. Reading it at doors-open
+        then doors-shut gives the two ends of the activation. ALL doors are moved (not just the faulty
+        one) so the readout never reveals which door is broken."""
         with quiet():
             body = p.loadURDF(_abs(urdf), [0, 0, 0], useFixedBase=1, physicsClientId=self.client)
             jidx = {}
             for j in range(p.getNumJoints(body, physicsClientId=self.client)):
-                jidx[p.getJointInfo(body, j, physicsClientId=self.client)[1].decode()] = j
-            for jn, j in jidx.items():
-                p.resetJointState(body, j, angle if jn == self.joint else 0.0,
-                                  physicsClientId=self.client)
+                info = p.getJointInfo(body, j, physicsClientId=self.client)
+                jidx[info[1].decode()] = j
+                a = angle if info[2] == p.JOINT_REVOLUTE else 0.0
+                p.resetJointState(body, j, a, physicsClientId=self.client)
             out = {}
             for pt in self.id_map.values():
                 ls = p.getLinkState(body, jidx[pt["joint"]], computeForwardKinematics=True,
@@ -236,7 +237,7 @@ class FridgeRepairEnv:
         if action_str in self._img_cache:
             return self._img_cache[action_str]
         with quiet():
-            imgs = views.open_closed_views(cand_urdf, self.joint, self.center, self.dist)
+            imgs = views.open_closed_views(cand_urdf, self.joint, self.center, self.dist, self.id_map)
         self._img_cache[action_str] = imgs
         return imgs
 
@@ -260,17 +261,17 @@ class FridgeRepairEnv:
                              f"size=[{e[0]:.3f},{e[1]:.3f},{e[2]:.3f}]")
             st, en = ev.get("act_start", {}), ev.get("act_end", {})
             lines.append("")
-            lines.append("your attempt - world centres at the START of activation (target door open):")
+            lines.append("your attempt - world centres at the START of activation (doors open):")
             for pid, pt in self.id_map.items():
                 c = st.get(pt["joint"], [0, 0, 0])
                 lines.append(f"  {pid} {pt['name']:<14} centre=[{c[0]:.3f},{c[1]:.3f},{c[2]:.3f}]")
-            lines.append("your attempt - world centres at the END of activation (target door shut/jammed):")
+            lines.append("your attempt - world centres at the END of activation (doors shut):")
             for pid, pt in self.id_map.items():
                 c = en.get(pt["joint"], [0, 0, 0])
                 lines.append(f"  {pid} {pt['name']:<14} centre=[{c[0]:.3f},{c[1]:.3f},{c[2]:.3f}]")
         else:
-            lines.append("(see the attached views: the target door CLOSED, then the target door "
-                         "OPEN at 90 degrees; target door in blue)")
+            lines.append("(see the attached views: all doors CLOSED, then all doors OPEN at 90 "
+                         "degrees; doors in blue, body grey)")
         lines.append("")
 
         # deviation gradient (the numeric mm) is gated; pass/fail + physical symptoms always shown
