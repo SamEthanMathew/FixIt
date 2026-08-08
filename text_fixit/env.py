@@ -236,8 +236,7 @@ class FridgeRepairEnv:
         if action_str in self._img_cache:
             return self._img_cache[action_str]
         with quiet():
-            imgs = views.hero_views(cand_urdf, self.center, self.dist)
-            imgs.append(views.closing_filmstrip(cand_urdf, self.joint, self.center, self.dist))
+            imgs = views.open_closed_views(cand_urdf, self.joint, self.center, self.dist)
         self._img_cache[action_str] = imgs
         return imgs
 
@@ -270,8 +269,8 @@ class FridgeRepairEnv:
                 c = en.get(pt["joint"], [0, 0, 0])
                 lines.append(f"  {pid} {pt['name']:<14} centre=[{c[0]:.3f},{c[1]:.3f},{c[2]:.3f}]")
         else:
-            lines.append("(see the attached views: two hero angles + a closing filmstrip of the "
-                         "target door swinging shut)")
+            lines.append("(see the attached views: the target door CLOSED (3/4 view), then the "
+                         "target door OPEN at 90 degrees seen from above; target door in blue)")
         lines.append("")
 
         # deviation gradient (the numeric mm) is gated; pass/fail + physical symptoms always shown

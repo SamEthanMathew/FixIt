@@ -72,8 +72,11 @@ def _render(urdf, joint=None, angle=0.0, center=None, dist=None, res=384, yaw=45
     proj = p.computeProjectionMatrixFOV(55, 1.0, 0.01, 100)
     # request per-LINK segmentation (default only gives object id -> every link reads as base)
     seg_flag = p.ER_SEGMENTATION_MASK_OBJECT_AND_LINKINDEX if want_seg else 0
+    # bright, even lighting (high ambient, no shadow) so PartNet's dark materials stay legible
     w, h, rgb, _, seg = p.getCameraImage(res, res, view, proj, renderer=p.ER_TINY_RENDERER,
-                                         shadow=1, lightDirection=[0.6, 0.4, 1.0],
+                                         shadow=0, lightDirection=[1.0, 1.0, 1.4],
+                                         lightColor=[1, 1, 1], lightAmbientCoeff=0.65,
+                                         lightDiffuseCoeff=0.70, lightSpecularCoeff=0.05,
                                          flags=seg_flag, physicsClientId=cid)
     j2l = _joint_to_link_index(body, cid) if want_seg else None
     p.disconnect(cid)
@@ -86,6 +89,30 @@ def hero_views(urdf, center, dist, res=384):
     a, _, _ = _render(urdf, center=center, dist=dist, res=res, yaw=-45, pitch=-30)
     b, _, _ = _render(urdf, center=center, dist=dist, res=res, yaw=135, pitch=-20)
     return [a, b]
+
+
+TARGET_RGBA = (0.16, 0.47, 0.84, 1)      # the door under repair -> distinct blue
+
+
+def open_closed_views(urdf, joint, center, dist, res=768):
+    """The two informative states of the target door: CLOSED (0 deg, shows the seam/gap/collision)
+    and OPEN (90 deg, the door fully unoccluded so its size/tilt/placement is visible).
+
+    Rendered with FLAT light materials (not the PartNet textures, which render near-black and hide the
+    geometry): body + other doors in light grey, the target door highlighted in blue so its gap /
+    overlap / tilt is legible. Replaces the cramped, dark closing filmstrip with two clean frames."""
+    import math
+    _, _, j2l = _render(urdf, center=center, dist=dist, res=res, want_seg=True)   # joint -> link idx
+    recolor = {li: BODY_RGBA for li in j2l.values()}
+    if joint in j2l:
+        recolor[j2l[joint]] = TARGET_RGBA
+    # CLOSED: 3/4 front, shows the seam gap / overlap / oversize.
+    closed, _, _ = _render(urdf, joint, 0.0, center, dist, res=res, yaw=-45, pitch=-30, recolor=recolor)
+    # OPEN: near top-down, so the swung door reads as a rectangle sticking out perpendicular to the
+    # body regardless of which side it hinges on (also exposes tilt) -- robust across doors.
+    opened, _, _ = _render(urdf, joint, math.radians(90.0), center, dist, res=res, yaw=-60, pitch=-82,
+                           recolor=recolor)
+    return [closed, opened]
 
 
 def closing_filmstrip(urdf, joint, center, dist, frames=4, res=260):
