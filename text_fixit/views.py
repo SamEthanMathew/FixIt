@@ -2,13 +2,11 @@
 """
 Rendered observations for the image (VLM) conditions.
 
-Three view products, all framed with a camera locked to the HEALTHY shape (render.camera_from_urdf)
-so a fix shows up as a visible change rather than being auto-zoomed away:
+View products, framed with a camera locked to the HEALTHY shape (render.camera_from_urdf) so a fix
+shows up as a visible change rather than being auto-zoomed away:
 
-  hero_views(urdf)       -> [Hero A, Hero B]   two yaws, closed pose, textured (resolve depth)
-  closing_filmstrip(urdf, joint) -> one tiled image of the target door swinging 90deg -> shut
-                            (a still can't show a jam; the strip can -- same rollout as
-                            visualize_episode.py)
+  closed_view(urdf, ..., id_map) -> [closed]   the CLOSED (all doors at 0 deg) front 3/4 view; parts
+                            flat-recoloured by index. Only the closed view is fed to the model.
   annotated_part_view(urdf, id_map) -> one image with each fixable door FLAT-recoloured from a fixed
                             palette and its P# label drawn at the part's projected centroid (via the
                             segmentation buffer) -- grounds the P# vocabulary to visible doors.
@@ -51,7 +49,7 @@ def _joint_to_link_index(body, cid):
 
 
 def _render(urdf, joint=None, angle=0.0, center=None, dist=None, res=384, yaw=45, pitch=-25,
-            recolor=None, textured=True, want_seg=False, open_all=False):
+            recolor=None, textured=True, want_seg=False):
     cid = p.connect(p.DIRECT)
     body = p.loadURDF(urdf, [0, 0, 0], useFixedBase=1, flags=R.LOAD_FLAGS, physicsClientId=cid)
     if recolor is not None:
@@ -62,8 +60,7 @@ def _render(urdf, joint=None, angle=0.0, center=None, dist=None, res=384, yaw=45
     doors = _revolute_joints(body)
     target = _joint_index_by_name(body, joint) if joint else None
     for jj in doors:
-        p.resetJointState(body, jj, angle if (open_all or jj == target) else 0.0,
-                          physicsClientId=cid)
+        p.resetJointState(body, jj, angle if jj == target else 0.0, physicsClientId=cid)
     p.performCollisionDetection(physicsClientId=cid)
     if center is None or dist is None:
         lo, hi = R._scene_aabb(body, cid)
@@ -92,18 +89,16 @@ def hero_views(urdf, center, dist, res=384):
     return [a, b]
 
 
-def open_closed_views(urdf, joint, center, dist, id_map, res=768):
-    """Two states of the object: CLOSED (0 deg, shows seam gap / overlap / oversize) and OPEN (90 deg,
-    ALL doors swung out so size/tilt/clearance is visible).
+def closed_view(urdf, center, dist, id_map, res=768):
+    """A single CLOSED (all doors at 0 deg) front 3/4 view -- shows the seam gap / overlap / oversize.
+    (Open views were removed: only the closed view is fed to the model.)
 
     Rendered with FLAT light materials (PartNet textures render near-black and hide the geometry).
     Each part gets a fixed colour BY INDEX (the SAME palette as the labelled reset view: P1, P2, ...),
-    NOT by which door is faulty -- so the colours ground the parts without ever revealing which door is
-    broken. ALL doors are opened too, so nothing singles out the faulty one; the agent must diagnose
-    it. Replaces the cramped, dark closing filmstrip."""
-    import math
+    NOT by which door is faulty -- so the colours ground the parts without revealing which door is
+    broken. Returns a one-image list."""
     _, _, j2l = _render(urdf, center=center, dist=dist, res=res, want_seg=True)   # joint -> link idx
-    recolor, ci, door_links = {}, 0, []
+    recolor, ci = {}, 0
     for pt in id_map.values():                                    # colour by PART INDEX, not fault
         li = j2l.get(pt["joint"])
         if li is None:
@@ -111,28 +106,10 @@ def open_closed_views(urdf, joint, center, dist, id_map, res=768):
         if pt["corruptible"]:
             recolor[li] = PALETTE[ci % len(PALETTE)]
             ci += 1
-            door_links.append(li)
         else:
             recolor[li] = BODY_RGBA
-    # Both from the same front 3/4 (yaw -45). CLOSED shows the seam gap / overlap / oversize. OPEN is
-    # swung only ~55 deg (AJAR), not the full 90: at 90 a fridge door is edge-on / projects flush from
-    # a horizontal camera and reads as closed, whereas ~55 deg clearly shows each door angled out
-    # (swing + clearance) from the front, with no top-down view. (door_links kept for reference.)
-    _ = door_links
-    closed, _, _ = _render(urdf, joint, 0.0, center, dist, res=res, yaw=-45, pitch=-30, recolor=recolor)
-    opened, _, _ = _render(urdf, joint, math.radians(55.0), center, dist, res=res, yaw=-45, pitch=-30,
-                           recolor=recolor, open_all=True)
-    return [closed, opened]
-
-
-def closing_filmstrip(urdf, joint, center, dist, frames=4, res=260):
-    import math
-    angs = [math.radians(90.0) * (1 - i / (frames - 1)) for i in range(frames)]
-    imgs = [_render(urdf, joint, a, center, dist, res=res, yaw=-45, pitch=-30)[0] for a in angs]
-    strip = Image.new("RGB", (res * frames + 2 * (frames - 1), res), (252, 252, 251))
-    for i, im in enumerate(imgs):
-        strip.paste(im, (i * (res + 2), 0))
-    return strip
+    closed, _, _ = _render(urdf, None, 0.0, center, dist, res=res, yaw=-45, pitch=-30, recolor=recolor)
+    return [closed]
 
 
 def annotated_part_view(urdf, id_map, center, dist, res=420):
@@ -204,9 +181,6 @@ if __name__ == "__main__":
     args = ap.parse_args()
     _, id_map = build_part_table(args.urdf)
     center, dist = R.camera_from_urdf(args.urdf)
-    joint = args.joint or next(p["joint"] for p in id_map.values() if p["corruptible"])
-    for i, im in enumerate(hero_views(args.urdf, center, dist)):
-        save(im, f"{args.out}/hero_{'AB'[i]}.png")
-    save(closing_filmstrip(args.urdf, joint, center, dist), f"{args.out}/filmstrip.png")
+    save(closed_view(args.urdf, center, dist, id_map)[0], f"{args.out}/closed.png")
     save(annotated_part_view(args.urdf, id_map, center, dist), f"{args.out}/annotated.png")
-    print(f"wrote hero_A/B, filmstrip, annotated -> {args.out}")
+    print(f"wrote closed, annotated -> {args.out}")

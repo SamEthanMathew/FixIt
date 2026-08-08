@@ -239,7 +239,7 @@ class FridgeRepairEnv:
         if action_str in self._img_cache:
             return self._img_cache[action_str]
         with quiet():
-            imgs = views.open_closed_views(cand_urdf, self.joint, self.center, self.dist, self.id_map)
+            imgs = views.closed_view(cand_urdf, self.center, self.dist, self.id_map)
         self._img_cache[action_str] = imgs
         return imgs
 
@@ -275,11 +275,11 @@ class FridgeRepairEnv:
                 lines.append(f"  {pid} {pt['name']:<14} centre=[{c[0]:.3f},{c[1]:.3f},{c[2]:.3f}]")
         elif reset:
             lines.append("(attached: the labelled parts view, then the BROKEN object with all doors "
-                         "CLOSED and all doors OPEN (ajar))")
+                         "CLOSED)")
         else:
-            lines.append("(attached, in order: the ORIGINAL BROKEN object CLOSED then OPEN (ajar), "
-                         "then YOUR FIX applied to it CLOSED then OPEN (ajar) - compare before vs "
-                         "after. Parts colour-coded by id as in the labelled view; body grey)")
+            lines.append("(attached: the ORIGINAL BROKEN object CLOSED, then YOUR FIX applied to it "
+                         "CLOSED - compare before vs after. Parts colour-coded by id as in the "
+                         "labelled view; body grey)")
         lines.append("")
 
         # deviation gradient (the numeric mm) is gated; pass/fail + physical symptoms always shown
