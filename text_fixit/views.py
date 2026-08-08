@@ -106,11 +106,10 @@ def open_closed_views(urdf, joint, center, dist, res=768):
     recolor = {li: BODY_RGBA for li in j2l.values()}
     if joint in j2l:
         recolor[j2l[joint]] = TARGET_RGBA
-    # CLOSED: 3/4 front, shows the seam gap / overlap / oversize.
+    # CLOSED and OPEN from the same 3/4 front angle: closed shows the seam gap / overlap / oversize;
+    # open shows the door swung out to 90 degrees.
     closed, _, _ = _render(urdf, joint, 0.0, center, dist, res=res, yaw=-45, pitch=-30, recolor=recolor)
-    # OPEN: near top-down, so the swung door reads as a rectangle sticking out perpendicular to the
-    # body regardless of which side it hinges on (also exposes tilt) -- robust across doors.
-    opened, _, _ = _render(urdf, joint, math.radians(90.0), center, dist, res=res, yaw=-60, pitch=-82,
+    opened, _, _ = _render(urdf, joint, math.radians(90.0), center, dist, res=res, yaw=-45, pitch=-30,
                            recolor=recolor)
     return [closed, opened]
 

@@ -17,8 +17,8 @@ WHAT YOU SEE
 Each observation gives two rendered views of the current object (not text coordinates):
   - the target door CLOSED (0 degrees): a correct door sits flush against the body with no gap and
     no overlap; a broken one leaves a visible gap or interpenetrates the body / the other door.
-  - the target door OPEN (90 degrees), seen from ABOVE: the swung door sticks out from the body, so
-    you can read its size, tilt and whether it swings clear.
+  - the target door OPEN (90 degrees): the door swung fully out, so you can read its size, tilt and
+    whether it swings clear.
 The target door is highlighted in blue; the body and any other door are light grey. Read the door's
 position, size, tilt and seating off these two images.
 
