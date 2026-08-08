@@ -271,7 +271,7 @@ class FridgeRepairEnv:
                 lines.append(f"  {pid} {pt['name']:<14} centre=[{c[0]:.3f},{c[1]:.3f},{c[2]:.3f}]")
         else:
             lines.append("(see the attached views: all doors CLOSED, then all doors OPEN at 90 "
-                         "degrees; doors in blue, body grey)")
+                         "degrees; parts colour-coded by id as in the labelled view, body grey)")
         lines.append("")
 
         # deviation gradient (the numeric mm) is gated; pass/fail + physical symptoms always shown

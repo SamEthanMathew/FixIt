@@ -19,9 +19,9 @@ Each observation gives two rendered views of the current object (not text coordi
     overlap; a broken one leaves a visible gap or interpenetrates the body / another door.
   - all doors OPEN (90 degrees): the doors swung fully out, so you can read each door's size, tilt
     and whether it swings clear.
-All doors are shown the same light blue and the body is light grey - the faulty door is NOT marked,
-so you must work out which door is broken from the images. Read each door's position, size, tilt and
-seating off these two views.
+Each part keeps the same colour as in the labelled reset view (P1, P2, ...); the body is grey. These
+colours only identify the parts - they do NOT mark which door is faulty, so you must work out which
+door is broken from the images. Read each door's position, size, tilt and seating off these two views.
 
 FRAME AND UNITS
 Right-handed object frame; the axes X, Y, Z are the coordinate axes in the part table (centres and

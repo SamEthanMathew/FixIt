@@ -92,25 +92,27 @@ def hero_views(urdf, center, dist, res=384):
     return [a, b]
 
 
-DOOR_RGBA = (0.45, 0.62, 0.85, 1)        # ALL fixable doors get the SAME colour (never single out
-#                                          the faulty one -- the agent must find which door is broken)
-
-
 def open_closed_views(urdf, joint, center, dist, id_map, res=768):
     """Two states of the object: CLOSED (0 deg, shows seam gap / overlap / oversize) and OPEN (90 deg,
     ALL doors swung out so size/tilt/clearance is visible).
 
-    Rendered with FLAT light materials (PartNet textures render near-black and hide the geometry):
-    every door the same light blue, body light grey. Crucially it does NOT reveal which door is
-    faulty -- all doors look identical and ALL are opened, so the agent must diagnose the fault
-    itself. Replaces the cramped, dark closing filmstrip."""
+    Rendered with FLAT light materials (PartNet textures render near-black and hide the geometry).
+    Each part gets a fixed colour BY INDEX (the SAME palette as the labelled reset view: P1, P2, ...),
+    NOT by which door is faulty -- so the colours ground the parts without ever revealing which door is
+    broken. ALL doors are opened too, so nothing singles out the faulty one; the agent must diagnose
+    it. Replaces the cramped, dark closing filmstrip."""
     import math
     _, _, j2l = _render(urdf, center=center, dist=dist, res=res, want_seg=True)   # joint -> link idx
-    recolor = {}
-    for pt in id_map.values():
+    recolor, ci = {}, 0
+    for pt in id_map.values():                                    # colour by PART INDEX, not fault
         li = j2l.get(pt["joint"])
-        if li is not None:
-            recolor[li] = DOOR_RGBA if pt["corruptible"] else BODY_RGBA
+        if li is None:
+            continue
+        if pt["corruptible"]:
+            recolor[li] = PALETTE[ci % len(PALETTE)]
+            ci += 1
+        else:
+            recolor[li] = BODY_RGBA
     closed, _, _ = _render(urdf, joint, 0.0, center, dist, res=res, yaw=-45, pitch=-30, recolor=recolor)
     opened, _, _ = _render(urdf, joint, math.radians(90.0), center, dist, res=res, yaw=-45, pitch=-30,
                            recolor=recolor, open_all=True)
