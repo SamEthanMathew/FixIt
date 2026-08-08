@@ -14,14 +14,17 @@ annotated view where each fixable door is recoloured and labelled with its P# so
 door is which.
 
 WHAT YOU SEE
-Each observation gives two rendered views of the current object (not text coordinates):
-  - all doors CLOSED (0 degrees): a correct door sits flush against the body with no gap and no
-    overlap; a broken one leaves a visible gap or interpenetrates the body / another door.
-  - all doors OPEN (90 degrees): the doors swung fully out, so you can read each door's size, tilt
-    and whether it swings clear.
-Each part keeps the same colour as in the labelled reset view (P1, P2, ...); the body is grey. These
-colours only identify the parts - they do NOT mark which door is faulty, so you must work out which
-door is broken from the images. Read each door's position, size, tilt and seating off these two views.
+Each SIMULATE observation gives FOUR rendered views (not text coordinates), so you can compare
+before vs after your fix:
+  - the ORIGINAL BROKEN object, all doors CLOSED, then all doors OPEN (90 degrees) - this "before"
+    is the same every turn, because each action is applied fresh to the original broken object.
+  - YOUR FIX applied to it, all doors CLOSED, then all doors OPEN.
+CLOSED shows seating: a correct door sits flush with no gap and no overlap; a broken one leaves a
+visible gap or interpenetrates the body / another door. OPEN shows each door's size, tilt and whether
+it swings clear. Each part keeps the same colour as in the labelled reset view (P1, P2, ...); the
+body is grey. These colours only identify the parts - they do NOT mark which door is faulty, so you
+must work out which door is broken. Judge your fix by how much closer the "after" is to correct than
+the "before".
 
 FRAME AND UNITS
 Right-handed object frame; the axes X, Y, Z are the coordinate axes in the part table (centres and

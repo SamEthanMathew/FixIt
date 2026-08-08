@@ -123,7 +123,9 @@ class FridgeRepairEnv:
                                                             self.center, self.dist)
         ev = self._evaluate_spec(None, "broken")     # broken as-is
         self.reset_eval = ev
-        obs = {"text": self._render(ev, header="BROKEN OBJECT (initial)"),
+        # cache the ORIGINAL broken object's closed+open views -> shown every turn as the "before"
+        self._broken_views = list(ev.get("images", []))
+        obs = {"text": self._render(ev, header="BROKEN OBJECT (initial)", reset=True),
                "eval": ev, "part_table": self.table_text, "target_pid": self.target_pid,
                "images": self._obs_images(ev, reset=True)}
         return obs
@@ -242,16 +244,18 @@ class FridgeRepairEnv:
         return imgs
 
     def _obs_images(self, ev, reset=False):
-        """Images attached to an observation: candidate hero A/B + closing filmstrip, plus the
-        labeled part view once at reset. Empty for the text conditions."""
+        """Images attached to an observation. Each turn shows the ORIGINAL broken object (closed+open)
+        as the 'before', then THIS fix (closed+open) as the 'after', so the model compares them
+        (attempts don't stack, so the 'before' is always the initial broken state). Reset shows the
+        labelled part view + the broken closed+open. Empty for the text conditions."""
         if self.state_modality != "image":
             return []
-        imgs = list(ev.get("images", []))
-        if reset and self._annotated is not None:
-            imgs = [self._annotated] + imgs
-        return imgs
+        broken = list(getattr(self, "_broken_views", []))
+        if reset:
+            return ([self._annotated] if self._annotated is not None else []) + broken
+        return broken + list(ev.get("images", []))
 
-    def _render(self, ev, header):
+    def _render(self, ev, header, reset=False):
         lines = [header, ""]
         if self.state_modality == "text":
             lines.append("original broken (reference) - part geometry [centre; size] in each part's X,Y,Z:")
@@ -269,9 +273,13 @@ class FridgeRepairEnv:
             for pid, pt in self.id_map.items():
                 c = en.get(pt["joint"], [0, 0, 0])
                 lines.append(f"  {pid} {pt['name']:<14} centre=[{c[0]:.3f},{c[1]:.3f},{c[2]:.3f}]")
+        elif reset:
+            lines.append("(attached: the labelled parts view, then the BROKEN object with all doors "
+                         "CLOSED and all doors OPEN)")
         else:
-            lines.append("(see the attached views: all doors CLOSED, then all doors OPEN at 90 "
-                         "degrees; parts colour-coded by id as in the labelled view, body grey)")
+            lines.append("(attached, in order: the ORIGINAL BROKEN object CLOSED then OPEN, then "
+                         "YOUR FIX applied to it CLOSED then OPEN - compare before vs after. Parts "
+                         "colour-coded by id as in the labelled view; body grey)")
         lines.append("")
 
         # deviation gradient (the numeric mm) is gated; pass/fail + physical symptoms always shown
