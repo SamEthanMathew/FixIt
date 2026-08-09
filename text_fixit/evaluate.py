@@ -83,6 +83,9 @@ def compute_metrics(records):
         "commit_precision": _mean([1.0 if r["terminal_pass"] else 0.0 for r in committed]) if committed else float("nan"),
         "over_budget_rate": _mean([0.0 if r["committed"] else 1.0 for r in records]),
         "resets_per_episode": _mean([r.get("n_reset", 0) for r in records]),
+        # episodes touched by an infrastructure failure rather than a model failure -- must be ~0
+        # for the headline numbers to mean anything
+        "api_giveup_episodes": sum(1 for r in records if r.get("n_api_giveup", 0)),
         "mean_actions_per_turn": _mean([h.get("n_actions") for r in records
                                         for h in r.get("history", []) if h.get("n_actions")]),
     }
@@ -104,7 +107,9 @@ def run_agent(agent_name, instances, run_dir, budget, modality, deviation, seed,
                     instance_ids=[i["id"] for i in instances],
                     temperature=getattr(agent, "temperature", None),
                     history_mode=getattr(agent, "history", None),
-                    thinking=getattr(agent, "thinking", None))
+                    thinking=getattr(agent, "thinking", None),
+                    thinking_budget=getattr(agent, "thinking_budget", None),
+                    max_output_tokens=getattr(agent, "max_tokens", None))
     records = []
     for i, inst in enumerate(instances):
         rec = run_episode(env, agent, inst, logger=logger)
@@ -236,6 +241,10 @@ if __name__ == "__main__":
                     help="hard benchmark: hide the part table's fixable/role columns and render "
                          "doors in one neutral colour from a less favourable yaw")
     ap.add_argument("--model", default=None, help="sets GEMINI_MODEL for this run")
+    ap.add_argument("--thinking-budget", type=int, default=None,
+                    help="cap per-turn thinking tokens (default: dynamic/uncapped). When set, the "
+                         "budget is STATED to the model in the system prompt so it can ration its "
+                         "reasoning instead of being truncated before it emits <act>")
     ap.add_argument("--shard", default=None, metavar="I/N",
                     help="run only instances i where i %% N == I (0-indexed). Episodes are "
                          "independent, so a condition can be split across processes and merged; "
@@ -246,6 +255,8 @@ if __name__ == "__main__":
 
     if args.model:
         os.environ["GEMINI_MODEL"] = args.model
+    if args.thinking_budget is not None:
+        os.environ["FIXIT_THINKING_BUDGET"] = str(args.thinking_budget)
 
     instances_path = args.instances
     if instances_path:

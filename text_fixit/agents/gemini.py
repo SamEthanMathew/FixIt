@@ -76,12 +76,20 @@ class GeminiAgent(Agent):
     # starved and the call came back empty / MALFORMED_FUNCTION_CALL, so the cap has to clear the
     # thinking budget by a wide margin.
     def __init__(self, oneshot=False, model=None, temperature=0.7, max_tokens=32768,
-                 history="window3", thinking=True):
+                 history="window3", thinking=True, thinking_budget=None):
         assert history in ("window3", "full")
         self.oneshot = oneshot
         self.history = history           # "window3": stateless call w/ last-3 summary each turn
         #                                  "full":    one accumulating conversation per object
         self.thinking = thinking
+        # None => dynamic (-1), the baseline setting. An integer CAPS per-turn thinking, and when it
+        # is capped the model is TOLD its budget in the system prompt ($thinking_note): a model that
+        # does not know it is on a budget will happily spend the whole allowance reasoning and get
+        # cut off before it emits <act>, which scores as an invalid turn rather than a wrong answer.
+        env_tb = os.environ.get("FIXIT_THINKING_BUDGET")
+        if thinking_budget is None and env_tb:
+            thinking_budget = int(env_tb)
+        self.thinking_budget = thinking_budget
         if oneshot:
             self.name = "oneshot_gemini"
         else:
@@ -134,6 +142,7 @@ class GeminiAgent(Agent):
             function_text=FUNCTION_TEXT.get(cat, ""), success_text=SUCCESS_TEXT.get(cat, ""),
             part_table=env.table_text, fault_hint=(FAULT_HINT_MULTI if hard else FAULT_HINT_SINGLE),
             tol_pct=f"{geom.TAU_FRAC * 100:.1f}%", contract_block=contract_block,
+            thinking_note=self._thinking_note(),
             value_grid=VALUE_GRID_STR, angle_grid=ANGLE_GRID_STR, scale_grid=SCALE_GRID_STR,
             K=(0 if self.oneshot else env.budget))
 
@@ -223,10 +232,24 @@ class GeminiAgent(Agent):
         if self.thinking and (self.model.startswith(("gemini-2.5", "gemini-3")) or
                               "robotics" in self.model):
             try:
-                cfg.thinking_config = types.ThinkingConfig(thinking_budget=-1)
+                cfg.thinking_config = types.ThinkingConfig(
+                    thinking_budget=(-1 if self.thinking_budget is None else self.thinking_budget))
             except Exception:  # noqa: BLE001 - older SDKs without ThinkingConfig
                 pass
         return cfg
+
+    def _thinking_note(self):
+        """Told to the model whenever thinking is CAPPED, so it can ration its reasoning instead of
+        being truncated mid-thought and losing the <act> block entirely."""
+        if self.thinking_budget is None or not self.thinking:
+            return ""
+        return (f"REASONING BUDGET\n"
+                f"You have a thinking budget of {self.thinking_budget} tokens per turn, out of "
+                f"{self.max_tokens} total output tokens. Reason concisely enough to fit inside it: "
+                f"if you exhaust the budget before emitting your <act> block, the turn is wasted "
+                f"and counts as an invalid action. When the problem needs more thought than the "
+                f"budget allows, spend a SIMULATE call to test a partial hypothesis rather than "
+                f"trying to solve it all in one turn.\n")
 
     def _to_contents(self):
         """Serialize the running transcript to google-genai contents. Full TEXT history is kept;
@@ -250,7 +273,7 @@ class GeminiAgent(Agent):
                                           parts=parts))
         return contents
 
-    def _call(self, contents, system, retries=3):
+    def _call(self, contents, system, retries=5):
         """One model call, with retries. Everything about the call -- latency, token usage, finish
         reason, every failed attempt and its error -- lands in self.last_meta, which run_episode
         drains into turns.jsonl / raw/<id>.jsonl so no API detail is lost."""
@@ -296,7 +319,7 @@ class GeminiAgent(Agent):
                 if getattr(cfg, "thinking_config", None) is not None:
                     cfg.thinking_config = None
                     meta["thinking"] = False
-                time.sleep(1.5 * (i + 1))
+                time.sleep(min(60.0, 2.0 * (2 ** i)))     # exponential backoff for 429s/5xx
         meta["latency_s"] = round(time.time() - t0, 2)
         meta["gave_up"] = True
         return f"<think>api error: {last}</think><act>COMMIT NO_FIX()</act>"

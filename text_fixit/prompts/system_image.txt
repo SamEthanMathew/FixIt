@@ -35,4 +35,5 @@ A repair passes if EVERY faulty part is restored to within $tol_pct of its size,
 closes, and no parts interpenetrate. Faults are generated at 3x this tolerance or larger, so a
 visible discrepancy is real, not noise.
 
+$thinking_note
 $contract_block

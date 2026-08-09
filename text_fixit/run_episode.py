@@ -59,6 +59,7 @@ def run_episode(env, agent, instance, prompts=None, verbose=False, logger=None):
     first_sim_score = None
     pkw = _parse_kwargs(env)
     turn_log = []
+    api_giveups = 0     # turns where the API never returned usable text (see below)
 
     while not env.terminal and turns < max_turns:
         budget_left = env.budget - env.sim_count
@@ -82,6 +83,12 @@ def run_episode(env, agent, instance, prompts=None, verbose=False, logger=None):
         if parsed["valid"] and parsed["mode"] == "SIMULATE" and budget_left <= 0:
             obs, _ = env.auto_commit_best()
             break
+
+        # An exhausted-retries API call falls back to "COMMIT NO_FIX()", which would otherwise be
+        # indistinguishable from the model genuinely giving up. Count it so infrastructure failures
+        # can be separated from model failures when reading the results.
+        if (getattr(agent, "last_meta", {}) or {}).get("gave_up"):
+            api_giveups += 1
 
         obs, terminal, info = env.step(parsed)
         turns += 1
@@ -167,6 +174,7 @@ def run_episode(env, agent, instance, prompts=None, verbose=False, logger=None):
         "n_invalid": env.invalid_count,
         "n_reset": env.reset_count,
         "n_repeated": repeated,
+        "n_api_giveup": api_giveups,
         "first_sim_score": first_sim_score,
         "first_sim_pass": (first_sim_score is not None and first_sim_score >= 0.80),
         "history": [{"mode": h["mode"], "action": h["action_str"],
