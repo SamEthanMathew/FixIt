@@ -174,10 +174,12 @@ class GeminiAgent(Agent):
         cfg = types.GenerateContentConfig(system_instruction=None, temperature=self.temperature,
                                           max_output_tokens=self.max_tokens)
         # thinking ON (dynamic budget) when enabled -- max_output_tokens is set high so the visible
-        # <act> is not starved by thinking tokens.
-        if self.model.startswith("gemini-2.5"):
+        # <act> is not starved by thinking tokens. Attempted for 2.5 / 3.x / robotics-er; if a model
+        # rejects the config, _call drops it and retries.
+        if self.thinking and (self.model.startswith(("gemini-2.5", "gemini-3")) or
+                              "robotics" in self.model):
             try:
-                cfg.thinking_config = types.ThinkingConfig(thinking_budget=(-1 if self.thinking else 0))
+                cfg.thinking_config = types.ThinkingConfig(thinking_budget=-1)
             except Exception:  # noqa: BLE001 - older SDKs without ThinkingConfig
                 pass
         return cfg
@@ -217,6 +219,9 @@ class GeminiAgent(Agent):
                     return txt
             except Exception as e:  # noqa: BLE001 - network/quota; back off and retry
                 last = e
+                # a model that rejects the thinking config -> drop it and retry without thinking
+                if getattr(cfg, "thinking_config", None) is not None:
+                    cfg.thinking_config = None
                 time.sleep(1.5 * (i + 1))
         return f"<think>api error: {last}</think><act>COMMIT NO_FIX()</act>"
 

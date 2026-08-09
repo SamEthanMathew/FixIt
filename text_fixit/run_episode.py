@@ -86,6 +86,7 @@ def run_episode(env, agent, instance, prompts=None, verbose=False):
         "first_sim_score": first_sim_score,
         "first_sim_pass": (first_sim_score is not None and first_sim_score >= 0.80),
         "history": [{"mode": h["mode"], "action": h["action_str"],
+                     "think": h.get("think", ""), "backtrack": h.get("backtrack", False),
                      "pass": bool(h["eval"]["PASS"]), "score": round(h["eval"]["score"], 4),
                      "deviation_mm": round(h["eval"]["deviation_mm"], 1)} for h in env.history],
     }
@@ -107,6 +108,15 @@ def _make_agent(name, seed=0):
     if name in ("oneshot_gemini", "oneshot"):
         from agents.gemini import GeminiAgent
         return GeminiAgent(oneshot=True)
+    if name in ("qwen", "loop_qwen"):
+        from agents.qwen_vl import QwenVLAgent
+        return QwenVLAgent(oneshot=False, history="window3")
+    if name == "loop_qwen_full":
+        from agents.qwen_vl import QwenVLAgent
+        return QwenVLAgent(oneshot=False, history="full")
+    if name == "oneshot_qwen":
+        from agents.qwen_vl import QwenVLAgent
+        return QwenVLAgent(oneshot=True)
     raise ValueError(f"unknown agent {name!r}")
 
 
