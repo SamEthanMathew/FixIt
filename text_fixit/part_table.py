@@ -28,29 +28,41 @@ def _axis_str(vec):
     return f"{'+' if vec[i] >= 0 else '-'}{'XYZ'[i]}"
 
 
-def build_part_table(urdf):
+def build_part_table(urdf, reveal_fixable=True):
     """Return (table_text, id_map).
 
     table_text : the formatted table string for the prompt.
     id_map     : {"P0": part_dict, ...} where part_dict is the parts.list_parts entry augmented
                  with "id" and "bbox" (extent w,d,h in metres).
+
+    reveal_fixable=False (the hard benchmark) drops the `role` and `fixable` columns, so the table
+    no longer hands the agent the candidate set -- it has to work out which parts are repairable
+    from the label, the bbox and whether a hinge is listed. id_map is unchanged either way; only the
+    agent-visible text differs.
     """
     parts = list_parts(urdf)
     id_map = {}
     rows = []
-    header = f"  {'id':<4} {'label':<14} {'role':<10} {'fixable':<8} {'bbox (w,d,h)':<18} joint"
+    cols = [f"{'id':<4}", f"{'label':<14}"]
+    if reveal_fixable:
+        cols += [f"{'role':<10}", f"{'fixable':<8}"]
+    cols += [f"{'bbox (w,d,h)':<18}", "joint"]
+    header = "  " + " ".join(cols)
     for i, part in enumerate(parts):
         pid = f"P{i}"
         ext = geom.link_geometry(urdf, part["link"])["extent"]
         bbox = f"{ext[0]:.2f},{ext[1]:.2f},{ext[2]:.2f}"
-        role = "base" if not part["corruptible"] else part["joint_type"]
-        fixable = "yes" if part["corruptible"] else "no"
         if part["corruptible"]:
             o = part["joint_origin"]
             joint = f"axis {_axis_str(part['joint_axis'])} at ({o[0]:.2f},{o[1]:.2f},{o[2]:.2f})"
         else:
             joint = "—"
-        rows.append(f"  {pid:<4} {part['name']:<14} {role:<10} {fixable:<8} {bbox:<18} {joint}")
+        cells = [f"{pid:<4}", f"{part['name']:<14}"]
+        if reveal_fixable:
+            role = "base" if not part["corruptible"] else part["joint_type"]
+            cells += [f"{role:<10}", f"{'yes' if part['corruptible'] else 'no':<8}"]
+        cells += [f"{bbox:<18}", joint]
+        rows.append("  " + " ".join(cells))
         part = dict(part, id=pid, bbox=[float(x) for x in ext])
         id_map[pid] = part
     return header + "\n" + "\n".join(rows), id_map

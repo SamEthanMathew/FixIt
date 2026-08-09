@@ -16,8 +16,10 @@ import sys
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import geom  # noqa: E402
 from env import FridgeRepairEnv  # noqa: E402
 from run_episode import _make_agent, run_episode  # noqa: E402
+from runlog import RunLogger  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -80,25 +82,40 @@ def compute_metrics(records):
         "invalid_action_rate": (total_invalid / total_actions) if total_actions else 0.0,
         "commit_precision": _mean([1.0 if r["terminal_pass"] else 0.0 for r in committed]) if committed else float("nan"),
         "over_budget_rate": _mean([0.0 if r["committed"] else 1.0 for r in records]),
+        "resets_per_episode": _mean([r.get("n_reset", 0) for r in records]),
+        "mean_actions_per_turn": _mean([h.get("n_actions") for r in records
+                                        for h in r.get("history", []) if h.get("n_actions")]),
     }
 
 
-def run_agent(agent_name, instances, run_dir, budget, modality, deviation, seed):
-    env = FridgeRepairEnv(budget=budget, state_modality=modality, show_deviation=deviation)
+def run_agent(agent_name, instances, run_dir, budget, modality, deviation, seed,
+              contract="batch", hard=False, instances_path=None):
+    """Run one agent over the instance list, logging EVERYTHING (see runlog.RunLogger): per-episode
+    records, per-turn reasoning/raw output/prompts/images/API metadata, errors, and a readable
+    trajectory per episode."""
+    env = FridgeRepairEnv(budget=budget, state_modality=modality, show_deviation=deviation,
+                          action_contract=contract, hard=hard)
     agent = _make_agent(agent_name, seed=seed)
-    out_dir = os.path.join(run_dir, agent_name)
-    os.makedirs(out_dir, exist_ok=True)
+    logger = RunLogger(run_dir, agent_name)
+    logger.manifest(agent=agent_name, model=getattr(agent, "model", None), budget=budget,
+                    modality=modality, show_deviation=deviation, contract=contract, hard=hard,
+                    tau_frac=geom.TAU_FRAC, seed=seed, n_instances=len(instances),
+                    instances_path=instances_path,
+                    instance_ids=[i["id"] for i in instances],
+                    temperature=getattr(agent, "temperature", None),
+                    history_mode=getattr(agent, "history", None),
+                    thinking=getattr(agent, "thinking", None))
     records = []
-    with open(os.path.join(out_dir, "records.jsonl"), "w") as f:
-        for i, inst in enumerate(instances):
-            rec = run_episode(env, agent, inst)
-            records.append(rec)
-            f.write(json.dumps(rec) + "\n")
-            f.flush()
-            print(f"[{agent_name}] {i + 1}/{len(instances)} {inst['id'][:30]:30s} "
-                  f"PASS={rec['terminal_pass']} score={rec['terminal_score']:.2f} "
-                  f"sims={rec['n_simulate']}", flush=True)
+    for i, inst in enumerate(instances):
+        rec = run_episode(env, agent, inst, logger=logger)
+        records.append(rec)
+        print(f"[{agent_name}] {i + 1}/{len(instances)} {inst['id'][:34]:34s} "
+              f"PASS={rec['terminal_pass']} score={rec['terminal_score']:.2f} "
+              f"sims={rec['n_simulate']}", flush=True)
     env.close()
+    solved = sum(1 for r in records if r["terminal_pass"])
+    logger.finish(n=len(records), solved=solved,
+                  success_rate=(solved / len(records) if records else None))
     return records
 
 
@@ -133,15 +150,20 @@ def write_report(run_id, split, per_agent_metrics, path):
     return path
 
 
-def append_per_type(path, per_agent_records, types=("scale", "translate", "rotate")):
-    """Append a per-fault-type breakdown (success rate . mean score) to the report."""
-    lines = ["", "## By fault type  (success rate · mean score)", "",
+def append_per_type(path, per_agent_records, types=("scale", "translate", "rotate"),
+                    key="corruption_type", title="By fault type"):
+    """Append a breakdown (success rate . mean score) grouped by `key` to the report.
+
+    key="corruption_type" for the single-fault sets; key="level" for the hard benchmark, where the
+    interesting split is composite_1door vs composite_2door vs control_single.
+    """
+    lines = ["", f"## {title}  (success rate · mean score)", "",
              "| agent | " + " | ".join(types) + " | overall |",
              "|---|" + "|".join(["---"] * (len(types) + 1)) + "|"]
     for agent, recs in per_agent_records.items():
         cells = []
         for t in types:
-            sub = [r for r in recs if r["corruption_type"] == t]
+            sub = [r for r in recs if r.get(key) == t]
             if sub:
                 sr = _mean([1.0 if r["terminal_pass"] else 0.0 for r in sub])
                 ms = _mean([r["terminal_score"] for r in sub])
@@ -187,6 +209,10 @@ def load_split(split):
     return [json.loads(l) for l in open(os.path.join(HERE, "data", f"instances_{split}.jsonl"))]
 
 
+def load_instances(path):
+    return [json.loads(l) for l in open(path)]
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--agents", default="random,oracle")
@@ -200,11 +226,31 @@ if __name__ == "__main__":
     ap.add_argument("--modality", default="text", choices=["text", "image"])
     ap.add_argument("--deviation", default="on", choices=["on", "off"])
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--instances", default=None,
+                    help="explicit instances jsonl (e.g. data/instances_hard.jsonl); "
+                         "overrides --split and disables --per-type stratification")
+    ap.add_argument("--contract", default="batch", choices=["batch", "stack"],
+                    help="batch = ordered action LIST applied fresh; stack = one action per turn "
+                         "onto a persisted working state (+RESET)")
+    ap.add_argument("--hard", action="store_true",
+                    help="hard benchmark: hide the part table's fixable/role columns and render "
+                         "doors in one neutral colour from a less favourable yaw")
+    ap.add_argument("--model", default=None, help="sets GEMINI_MODEL for this run")
     ap.add_argument("--report-only", action="store_true",
                     help="rebuild the report from existing runs/<run>/<agent>/records.jsonl, no runs")
     args = ap.parse_args()
 
-    instances = load_split(args.split)
+    if args.model:
+        os.environ["GEMINI_MODEL"] = args.model
+
+    instances_path = args.instances
+    if instances_path:
+        if not os.path.isabs(instances_path):
+            instances_path = os.path.join(HERE, instances_path)
+        instances = load_instances(instances_path)
+        args.per_type = None                 # explicit lists are used whole, in file order
+    else:
+        instances = load_split(args.split)
     rng = random.Random(args.seed)
     if args.per_type:
         pool = defaultdict(list)
@@ -236,15 +282,22 @@ if __name__ == "__main__":
             records = [json.loads(l) for l in open(path)]
         else:
             records = run_agent(agent_name, instances, run_dir, args.budget, args.modality,
-                                (args.deviation == "on"), args.seed)
+                                (args.deviation == "on"), args.seed,
+                                contract=args.contract, hard=args.hard,
+                                instances_path=instances_path)
         per_agent[agent_name] = compute_metrics(records)
         per_agent_records[agent_name] = records
         print(f"  -> {agent_name}: success={per_agent[agent_name]['success_rate']:.2f} "
               f"score={per_agent[agent_name]['mean_score']:.2f}", flush=True)
 
-    report = write_report(args.run, args.split, per_agent,
+    report = write_report(args.run, (instances_path or args.split), per_agent,
                           os.path.join(HERE, "reports", f"{args.run}.md"))
     append_per_type(report, per_agent_records)
+    levels = sorted({r.get("level") for recs in per_agent_records.values() for r in recs
+                     if r.get("level") and r["level"] != "single"})
+    if levels:
+        append_per_type(report, per_agent_records, types=tuple(levels), key="level",
+                        title="By difficulty level")
     append_submit_histogram(report, per_agent_records, args.budget)
     print(f"\nreport -> {report}")
     print(json.dumps({a: {k: v for k, v in m.items() if not k.endswith("_ci")}

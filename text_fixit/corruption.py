@@ -20,6 +20,7 @@ recomputing them from already-deformed geometry.
 A spec: {type, axis(0|1|2), value, link, joint, [centroid], [pivot]}; axis is a URDF axis index.
 """
 import math
+import os
 import random
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -36,6 +37,7 @@ SCALE_RANGE = (1.25, 1.60)       # enlarge factor -- snapped onto grids.SCALE_GR
 
 
 BROKEN_MARGIN = 3.0     # a corruption must displace the part by >= BROKEN_MARGIN * tau
+GROW_FACTOR = 1.12      # continuous mode: multiplicative growth step (see _grow_continuous)
 
 
 def _magnitude(spec):
@@ -73,13 +75,40 @@ def _grow_on_grid(spec):
     return out
 
 
+def _grow_continuous(spec):
+    """Same corruption at a GROW_FACTOR-larger magnitude, or None once it leaves the action-space
+    bound. The OFF-GRID counterpart of _grow_on_grid: the agent's action space is continuous, so the
+    exact inverse (-v for translate/rotate, 1/f for scale) is representable whatever the magnitude --
+    no grid is needed to keep the break invertible. Scale grows in LOG space so that its reciprocal
+    stays inside the symmetric [SCALE_MIN, SCALE_MAX] bound."""
+    t = spec["type"]
+    out = dict(spec)
+    if t == "translate":
+        v = spec["value"] * GROW_FACTOR
+        if abs(v) > grids.TRANSLATE_MAX:
+            return None
+        out["value"] = v
+    elif t == "rotate":
+        v = spec["value"] * GROW_FACTOR
+        if abs(math.degrees(v)) > grids.ANGLE_MAX:
+            return None
+        out["value"] = v
+    elif t == "scale":
+        v = math.exp(math.log(spec["value"]) * GROW_FACTOR)
+        if not (grids.SCALE_MIN <= v <= grids.SCALE_MAX):
+            return None
+        out["value"] = v
+    return out
+
+
 def _invert(spec):
     out = dict(spec)
     out["value"] = 1.0 / spec["value"] if spec["type"] == "scale" else -spec["value"]
     return out
 
 
-def sample_corruption(urdf, part, index, ctype, ensure_broken=True, client=None):
+def sample_corruption(urdf, part, index, ctype, ensure_broken=True, client=None,
+                      continuous=False, base=""):
     """Deterministically sample a corruption of `ctype` for `part` of `urdf`.
 
     Returns (spec, fix_spec) where fix_spec is the exact inverse.
@@ -88,28 +117,43 @@ def sample_corruption(urdf, part, index, ctype, ensure_broken=True, client=None)
     least BROKEN_MARGIN * tau, so every generated instance is unambiguously broken. Growing beats
     rejection-sampling here: rejecting would silently thin the instance set (sampled magnitudes
     routinely land under 3*tau). Returns (None, None) if it cannot clear the margin.
+
+    `continuous=True` (the hard benchmark) draws magnitudes OFF-GRID and grows them multiplicatively,
+    so a model cannot land inside tolerance by recalling a plausible grid bin -- it has to actually
+    estimate the magnitude. It also samples the scale axis from the two broadest axes instead of
+    always the broadest (on-grid mode pins scale to axis order[0], which made ~78% of shipped scale
+    instances axis-1).
+
+    `base` (the shape id) enters the RNG seed. Without it every fridge draws the SAME stream for a
+    given (link, ctype, index) -- which is why 17% of the original instances are exact duplicate
+    corruptions. Defaults to "" to keep the pre-existing seeds bit-identical.
     """
-    rng = random.Random(f"{part['link']}|{ctype}|{index}")
+    seed = f"{base}|{part['link']}|{ctype}|{index}" if base else f"{part['link']}|{ctype}|{index}"
+    rng = random.Random(seed)
     g = geom.link_geometry(urdf, part["link"])
     extent = g["extent"]
     order = list(np.argsort(extent)[::-1])       # axes, largest extent first
 
+    def _mag(lo, hi, grid):
+        raw = rng.uniform(lo, hi)
+        return raw if continuous else grids.snap(raw, grid)
+
     if ctype == "translate":
         axis = int(rng.choice(order[:2]))        # shift along a broad axis of the door
-        mag = grids.snap(rng.uniform(*TRANSLATE_RANGE), grids.VALUE_GRID)
+        mag = _mag(*TRANSLATE_RANGE, grids.VALUE_GRID)
         val = abs(mag) * rng.choice([-1, 1])
         spec = {"type": "translate", "axis": axis, "value": val}
         fix = {"type": "translate", "axis": axis, "value": -val}
     elif ctype == "rotate":
         axis = int(rng.choice([0, 1, 2]))
-        deg = grids.snap(rng.uniform(*ROTATE_RANGE_DEG), grids.ANGLE_GRID)
+        deg = _mag(*ROTATE_RANGE_DEG, grids.ANGLE_GRID)
         val = math.radians(abs(deg) * rng.choice([-1, 1]))
         c = canonical.part_centroid(urdf, part["link"])   # rotation centre (invariant, recomputable)
         spec = {"type": "rotate", "axis": axis, "value": val, "centroid": c}
         fix = {"type": "rotate", "axis": axis, "value": -val, "centroid": c}
     elif ctype == "scale":
-        axis = int(order[0])                     # largest extent -> a visible size change
-        f = grids.snap(rng.uniform(*SCALE_RANGE), grids.SCALE_GRID)
+        axis = int(rng.choice(order[:2])) if continuous else int(order[0])
+        f = _mag(*SCALE_RANGE, grids.SCALE_GRID)
         pivot = canonical.scale_pivot(urdf, part["link"], axis)   # hinge-side edge (invariant)
         spec = {"type": "scale", "axis": axis, "value": f, "pivot": pivot}
         fix = {"type": "scale", "axis": axis, "value": 1.0 / f, "pivot": pivot}
@@ -124,8 +168,9 @@ def sample_corruption(urdf, part, index, ctype, ensure_broken=True, client=None)
 
     # Grow the magnitude ON-GRID until the break clears BROKEN_MARGIN * tau. The probe URDF is
     # written beside the meshes (not a temp dir) so its relative textured_objs/ paths still resolve.
-    probe_name = f"_probe_{part['link']}_{ctype}_{index}.urdf"
+    probe_name = f"_probe_{part['link']}_{ctype}_{index}_{os.getpid()}.urdf"
     probe_path = Path(urdf).parent / probe_name
+    grow = _grow_continuous if continuous else _grow_on_grid
     cur = spec
     try:
         while cur is not None:
@@ -134,7 +179,7 @@ def sample_corruption(urdf, part, index, ctype, ensure_broken=True, client=None)
                                       client=client)
             if g2["deviation_mm"] >= BROKEN_MARGIN * g2["tau_mm"]:
                 return cur, _invert(cur)
-            cur = _grow_on_grid(cur)
+            cur = grow(cur)
         return None, None
     finally:
         if probe_path.exists():

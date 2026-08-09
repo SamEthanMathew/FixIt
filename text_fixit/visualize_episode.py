@@ -51,13 +51,29 @@ def _inject_canonical(spec, urdf):
 
 
 def _candidate_urdf(broken, action_str, id_map, tag):
-    """Apply one recorded action to the broken URDF -> candidate path (None-op for NO_FIX)."""
-    res = action_parser.parse(f"<act>COMMIT {action_str}</act>", id_map)
-    if not res["valid"] or res["action"]["type"] == "no_fix":
+    """Apply one recorded action to the broken URDF -> candidate path.
+
+    A recorded action may be a LIST (the batch contract) or carry a `@depthN` suffix (the stack
+    contract), so parse it multi-permissively and apply the whole ordered sequence, injecting each
+    op's canonical params from the intermediate state it acts on. NO_FIX/RESET are no-ops here.
+    """
+    body = action_str.split(" @depth")[0].strip("[] ")
+    res = action_parser.parse(f"<act>COMMIT {body}</act>", id_map, multi=True, allow_reset=True,
+                              allow_bare_commit=True)
+    specs = [a["spec"] for a in res.get("actions", []) if a.get("spec")]
+    if not res["valid"] or not specs:
         return broken, None
-    spec = _inject_canonical(res["action"]["spec"], broken)
-    out = corr.apply(broken, spec, f"_viz_{tag}.urdf")
-    return out, out
+    cur, tmps = broken, []
+    for i, raw in enumerate(specs):
+        spec = _inject_canonical(raw, cur)
+        nxt = corr.apply(cur, spec, f"_viz_{tag}_{i}.urdf")
+        if cur != broken:
+            tmps.append(cur)
+        cur = nxt
+    for t in tmps:
+        if os.path.exists(t):
+            os.remove(t)
+    return cur, cur
 
 
 def _scene_frames(urdf, joint, center, dist):

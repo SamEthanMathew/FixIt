@@ -39,6 +39,14 @@ PALETTE = [(0.16, 0.47, 0.84, 1), (0.92, 0.41, 0.20, 1), (0.11, 0.69, 0.48, 1),
            (0.93, 0.63, 0.0, 1), (0.91, 0.48, 0.64, 1), (0.29, 0.23, 0.65, 1)]
 BODY_RGBA = (0.72, 0.72, 0.70, 1)
 
+# HARD perception mode: every door gets the SAME neutral colour, so colour no longer identifies
+# which panel is which (the labelled reset view stays the only P# grounding), and the camera moves
+# to a less favourable yaw where the door panels are more foreshortened.
+HARD_DOOR_RGBA = (0.62, 0.64, 0.66, 1)
+EASY_YAW, HARD_YAW = -45, 35
+# Flat recolouring is KEPT in hard mode: PartNet's own materials render near-black under the tiny
+# renderer, so dropping it would make the views unreadable rather than merely harder.
+
 
 def _joint_to_link_index(body, cid):
     """joint name -> child-link index (getLinkState/segmentation index)."""
@@ -89,30 +97,37 @@ def hero_views(urdf, center, dist, res=384):
     return [a, b]
 
 
-def closed_view(urdf, center, dist, id_map, res=768):
+def closed_view(urdf, center, dist, id_map, res=768, hard=False):
     """A single CLOSED (all doors at 0 deg) front 3/4 view -- shows the seam gap / overlap / oversize.
     (Open views were removed: only the closed view is fed to the model.)
 
     Rendered with FLAT light materials (PartNet textures render near-black and hide the geometry).
     Each part gets a fixed colour BY INDEX (the SAME palette as the labelled reset view: P1, P2, ...),
     NOT by which door is faulty -- so the colours ground the parts without revealing which door is
-    broken. Returns a one-image list."""
+    broken.
+
+    hard=True: every door gets one NEUTRAL colour instead (colour stops identifying parts) and the
+    camera swings to HARD_YAW, a less favourable angle. Returns a one-image list."""
     _, _, j2l = _render(urdf, center=center, dist=dist, res=res, want_seg=True)   # joint -> link idx
     recolor, ci = {}, 0
     for pt in id_map.values():                                    # colour by PART INDEX, not fault
         li = j2l.get(pt["joint"])
         if li is None:
             continue
-        if pt["corruptible"]:
+        if not pt["corruptible"]:
+            recolor[li] = BODY_RGBA
+        elif hard:
+            recolor[li] = HARD_DOOR_RGBA
+        else:
             recolor[li] = PALETTE[ci % len(PALETTE)]
             ci += 1
-        else:
-            recolor[li] = BODY_RGBA
-    closed, _, _ = _render(urdf, None, 0.0, center, dist, res=res, yaw=-45, pitch=-30, recolor=recolor)
+    yaw = HARD_YAW if hard else EASY_YAW
+    closed, _, _ = _render(urdf, None, 0.0, center, dist, res=res, yaw=yaw, pitch=-30,
+                           recolor=recolor)
     return [closed]
 
 
-def annotated_part_view(urdf, id_map, center, dist, res=420):
+def annotated_part_view(urdf, id_map, center, dist, res=420, hard=False):
     """Flat-recolour fixable doors, render, and label each with its P# at its projected centroid."""
     # build recolor map: fixable parts -> palette, body -> grey
     # need link indices; open a scratch client only to resolve joint->link, reuse in _render via names
@@ -126,8 +141,11 @@ def annotated_part_view(urdf, id_map, center, dist, res=420):
             recolor_names[part["joint"]] = BODY_RGBA
     # first pass to get joint->link index mapping (and seg), then recolor by link index.
     # yaw -45/pitch -30 = the Hero-A angle where the doors face the camera (front), so labels
-    # land on visible door panels rather than edge-on slivers.
-    YAW, PITCH = -45, -30
+    # land on visible door panels rather than edge-on slivers. In hard mode we match closed_view's
+    # yaw so this reference view and the observation views share a viewpoint -- the labelled view
+    # KEEPS its distinct palette (it is the only P# grounding), while the observations go neutral,
+    # so the agent must carry the identity across by position rather than by colour.
+    YAW, PITCH = (HARD_YAW if hard else EASY_YAW), -30
     _, _, j2l = _render(urdf, center=center, dist=dist, res=res, yaw=YAW, pitch=PITCH, want_seg=True)
     recolor = {j2l[jn]: rgba for jn, rgba in recolor_names.items() if jn in j2l}
     img, seg, j2l = _render(urdf, center=center, dist=dist, res=res, yaw=YAW, pitch=PITCH,

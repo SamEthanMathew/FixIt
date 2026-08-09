@@ -77,6 +77,64 @@ def evaluate_repair(candidate_urdf, healthy_urdf, joint_name, link_name, client=
     return out
 
 
+def evaluate_repair_multi(candidate_urdf, healthy_urdf, faults, client=None):
+    """Same contract, generalised to instances with MORE THAN ONE faulty part.
+
+    `faults` is a list of dicts each carrying at least {"link", "joint"} (duplicates collapsed, so a
+    part with several sub-faults is measured once). Returns the same keys as evaluate_repair plus
+    `per_part`, so a single-fault instance scored here is directly comparable to one scored there.
+
+    Aggregation is WORST-PART, not mean:
+      deviation_mm = max_i deviation_i     -- a repair is only as good as its worst remaining fault
+      score        = min_i exp(-dev_i/tau_i)
+      PASS         = every part within tol AND every faulty door closes AND no part-collision
+
+    Why a wrapper rather than a rewrite: geom.geometric_score measures ONE link (scalar link_name),
+    so multi-part geometry needs a loop, whereas evaluate_closing is per-joint and
+    evaluate_part_collision is already whole-object and runs once. evaluate_repair is left untouched
+    so every existing single-fault run stays bit-reproducible.
+    """
+    seen, parts = set(), []
+    for f in faults:                                   # collapse sub-faults sharing a part
+        key = (f["link"], f["joint"])
+        if key not in seen:
+            seen.add(key)
+            parts.append(key)
+
+    per_part, worst = {}, None
+    for link, joint in parts:
+        g = geom.geometric_score(candidate_urdf, healthy_urdf, joint, link, client=client)
+        c = evaluate_closing(candidate_urdf, joint, client=client)
+        per_part[link] = {
+            "joint": joint,
+            "deviation_mm": round(g["deviation_mm"], 3),
+            "tau_mm": round(g["tau_mm"], 3),
+            "within_tol": g["within_tol"],
+            "score": round(g["score"], 4),
+            "closes": c["closes"],
+            "closed_angle_deg": round(c["closed_angle_deg"], 1),
+        }
+        if worst is None or g["deviation_mm"] > per_part[worst]["deviation_mm"]:
+            worst = link
+
+    pc = evaluate_part_collision(candidate_urdf, healthy_urdf, client=client)
+    out = {
+        "deviation_mm": max(v["deviation_mm"] for v in per_part.values()),
+        "tau_mm": min(v["tau_mm"] for v in per_part.values()),
+        "within_tol": all(v["within_tol"] for v in per_part.values()),
+        "score": min(v["score"] for v in per_part.values()),
+        "closes": all(v["closes"] for v in per_part.values()),
+        "closed_angle_deg": max(v["closed_angle_deg"] for v in per_part.values()),
+        "collides": pc["collides"],
+        "collision_excess_mm": pc["excess_mm"],
+        "collision_pair": pc["worst_pair_names"],
+        "per_part": per_part,
+        "worst_link": worst,
+    }
+    out["PASS"] = bool(out["within_tol"] and out["closes"] and not out["collides"])
+    return out
+
+
 if __name__ == "__main__":
     import argparse
     import json

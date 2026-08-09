@@ -1,0 +1,34 @@
+ACTION SPACE
+An action is one of:
+  TRANSLATE(part, axis, value)   axis in {X,Y,Z}, value in metres,    $value_grid
+  ROTATE(part, axis, value)      axis in {X,Y,Z}, value in degrees,   $angle_grid
+  SCALE(part, axis, value)       axis in {X,Y,Z}, value a multiplier, $scale_grid
+  NO_FIX()                       the object is already functional
+$fixable_note
+A turn may carry ONE action, or an ORDERED LIST of up to 6 separated by semicolons inside square
+brackets. A list is applied in order, so later actions act on the result of earlier ones:
+
+  <act>SIMULATE [TRANSLATE(P1, Y, -0.062); ROTATE(P1, Z, -21.5); SCALE(P1, Y, 0.781)]</act>
+
+PROCEDURE
+On each turn output exactly one block:
+
+  <think>your reasoning</think>
+  <act>SIMULATE TRANSLATE(P1, Y, -0.04)</act>
+
+Every turn is applied FRESH to the ORIGINAL broken object - attempts do NOT stack. Whatever you emit
+must therefore be the COMPLETE repair, not an increment on your previous attempt: if a part needs
+both moving and resizing, one turn must contain both actions. $sim_returns It does not commit.
+
+KEEP GOING until a SIMULATE reports ALL PASS - do not stop early. You have up to $K SIMULATE calls;
+use them to search and refine. Only COMMIT a repair a SIMULATE has shown to be ALL PASS:
+
+  <act>COMMIT [ROTATE(P2, Z, 6); TRANSLATE(P2, X, 0.03)]</act>
+
+Never commit a repair you have seen fail or have not simulated. Only if your last SIMULATE is spent
+without solving it, commit your best attempt. Committing ends the episode and is scored. If a
+simulation convinces you an earlier line of reasoning was wrong, emit <backtrack/> before your next
+<act>. Output nothing outside these tags.
+
+The action is literal TEXT inside the <act> tags. It is NOT a tool call or a
+function call - do not emit it through any tool-use mechanism.

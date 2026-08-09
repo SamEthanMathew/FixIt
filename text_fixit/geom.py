@@ -11,6 +11,7 @@ is left mis-placed / mis-sized / mis-oriented.
 Getting the door's world points via PyBullet getLinkState automatically reflects all three
 corruption types: translate/rotate change the link's world pose; scale changes the mesh scale.
 """
+import os
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -20,7 +21,12 @@ from scipy.spatial import cKDTree
 
 # Tolerance is defined RELATIVE to the part, so one constant works across large/small fridges
 # and 1-door/3-door shapes: tau = TAU_FRAC * door bbox diagonal (~20 mm on a typical 800 mm door).
-TAU_FRAC = 0.025
+#
+# Overridable via FIXIT_TAU_FRAC so the hard benchmark can tighten it (0.015) WITHOUT changing the
+# default -- every pre-existing run stays byte-reproducible at 0.025. Instances record the tau_frac
+# they were generated under and env.reset asserts the running value matches, so a generation/eval
+# mismatch is a loud failure rather than a silently mis-scored run.
+TAU_FRAC = float(os.environ.get("FIXIT_TAU_FRAC", 0.025))
 
 
 def tolerance(diag_m):

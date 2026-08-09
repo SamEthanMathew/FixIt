@@ -1,25 +1,42 @@
 #!/usr/bin/env python
 """
-FridgeRepairEnv -- a Gym-style, TEXT-only closed loop for single-fix fridge repair.
+FridgeRepairEnv -- a Gym-style closed loop for fridge repair, single-fault or COMPOSITE.
 
-Contract (matches the paper's simulator, MILESTONE_1 loop, and the user's SIMULATE/COMMIT prompt):
+Contract (matches the paper's simulator, MILESTONE_1 loop, and the SIMULATE/COMMIT prompt):
 
   reset(instance)            -> observation for the BROKEN object
   step(parsed_action)        -> (observation, terminal, info)
 
-  * SIMULATE: apply the fix to a COPY of the original broken URDF (NON-compounding), activate,
-              evaluate, render a text observation, append to history. Not terminal. Consumes budget.
+  * SIMULATE: apply the fix, evaluate, render an observation, append to history. Not terminal.
+              Consumes budget.
   * COMMIT:   apply the fix, evaluate, TERMINAL, return the terminal score.
   * NO_FIX:   evaluate the broken object unchanged (assert "already functional").
   * budget K of SIMULATE calls; run_episode auto-commits the best simulated fix if exhausted.
 
-The scoring signal is evaluation.evaluate_repair (deviation vs tau AND door closes AND no
-part-collision -> PASS) -- the adopted contract; score.py's open-sweep is superseded.
+TWO ACTION CONTRACTS (`action_contract`), the axis this env exists to compare:
 
-Feedback modes (what the agent sees each step):
-  "headline" : symbolic part poses + the list of FAILED criteria (no raw scalar) -- the true task.
-  "scalar"   : the above PLUS the numeric functional score (ablation).
-The agent never sees centroid/pivot; env injects those canonical params (canonical.py).
+  "batch"  A turn carries an ordered LIST of actions, applied in order to a fresh copy of the
+           ORIGINAL broken object -- attempts never stack, so the agent must always issue the FULL
+           correction. Repairing a 3-fault break means planning all three magnitudes before seeing
+           any feedback on them.
+  "stack"  A turn carries ONE action, applied on top of a persisted WORKING STATE that accumulates
+           across SIMULATEs -- the MDP framing. RESET() discards the working state (costing a budget
+           step) so a bad step is recoverable; a bare COMMIT commits the working state as-is.
+
+The working state is represented as a LIST OF SPECS rather than a URDF on disk: any state is
+`apply(broken, specs)`, so RESET is just clearing the list, "best so far" is just a list, and the
+two contracts share one evaluation path. Canonical params (rotation centre / scale pivot) are
+injected PER OP from the intermediate state that op actually acts on -- which is what makes an
+ordered sequence of repairs exactly expressible in the agent's parameter-free action space.
+
+The scoring signal is evaluation.evaluate_repair_multi (every faulty part within tau AND every
+faulty door closes AND no part-collision -> PASS).
+
+Observation toggles:
+  state_modality "text"  -> per-part geometry text; "image" -> rendered closed views.
+  show_deviation True    -> include the numeric 'pose off by N mm' gradient; False -> hide it.
+  hard True              -> hide the part table's fixable/role columns AND render doors in one
+                            neutral colour from a less favourable yaw (the hard benchmark).
 """
 import math
 import os
@@ -34,7 +51,8 @@ import corruption as corr  # noqa: E402
 import geom  # noqa: E402
 import render as R  # noqa: E402
 import views  # noqa: E402
-from evaluation import evaluate_repair  # noqa: E402
+from action_parser import format_call  # noqa: E402
+from evaluation import evaluate_repair_multi  # noqa: E402
 from part_table import build_part_table  # noqa: E402
 from quiet import quiet  # noqa: E402
 
@@ -47,12 +65,22 @@ def _abs(path):
 
 def _inject_canonical(spec, urdf):
     """Fill the canonical geometry params the agent does not supply (rotation centre / scale pivot),
-    recomputed from the current URDF so they equal the values the break used (see canonical.py)."""
+    recomputed from the URDF THIS op is applied to, so they equal the values the break used at the
+    matching point of the sequence (see canonical.py)."""
     if spec["type"] == "rotate":
         return dict(spec, centroid=canonical.part_centroid(urdf, spec["link"]))
     if spec["type"] == "scale":
         return dict(spec, pivot=canonical.scale_pivot(urdf, spec["link"], spec["axis"]))
     return spec
+
+
+def _instance_faults(instance):
+    """Fault list for either schema: the composite `faults` list, or the legacy single link/joint."""
+    if instance.get("faults"):
+        return [{"link": f["link"], "joint": f["joint"], "part_name": f.get("part_name", "")}
+                for f in instance["faults"]]
+    return [{"link": instance["link"], "joint": instance["joint"],
+             "part_name": instance.get("part_name", "")}]
 
 
 def _part_states(urdf, id_map):
@@ -78,18 +106,19 @@ def _part_states(urdf, id_map):
 
 
 class FridgeRepairEnv:
-    """Two orthogonal observation toggles (the modality x deviation 2x2):
-      state_modality "text"  -> per-part geometry text; "image" -> rendered hero+filmstrip views.
-      show_deviation True    -> include the numeric 'pose off by N mm' gradient; False -> hide it
-                                (pass/fail + physical symptoms only; agent must infer direction)."""
+    """See the module docstring for the observation toggles and the two action contracts."""
 
-    def __init__(self, budget=6, state_modality="text", show_deviation=True):
+    def __init__(self, budget=6, state_modality="text", show_deviation=True,
+                 action_contract="batch", hard=False):
         assert state_modality in ("text", "image")
+        assert action_contract in ("batch", "stack")
         self.budget = budget
         self.state_modality = state_modality
         self.show_deviation = show_deviation
+        self.action_contract = action_contract
+        self.hard = hard
         self.client = p.connect(p.DIRECT)
-        # unique token so concurrent runs (the 4 conditions share the same instances) never clobber
+        # unique token so concurrent runs (the conditions share the same instances) never clobber
         # each other's temp candidate URDF written beside the meshes.
         self._tok = f"{os.getpid()}_{id(self) & 0xffff}"
 
@@ -103,16 +132,34 @@ class FridgeRepairEnv:
         self.instance = instance
         self.broken = _abs(instance["broken_urdf"])
         self.healthy = _abs(instance["healthy_urdf"])
-        self.joint = instance["joint"]
-        self.link = instance["link"]
-        self.table_text, self.id_map = build_part_table(self.broken)
-        self.target_pid = next(pid for pid, pt in self.id_map.items() if pt["link"] == self.link)
+        self.faults = _instance_faults(instance)
+        self.faulty_links = list(dict.fromkeys(f["link"] for f in self.faults))
+        # legacy single-fault attributes, still used by tooling that predates composite instances
+        self.link = self.faults[0]["link"]
+        self.joint = self.faults[0]["joint"]
+
+        # A tau mismatch between generation and evaluation would silently mis-score the whole run.
+        tf = instance.get("tau_frac")
+        if tf is not None and abs(tf - geom.TAU_FRAC) > 1e-12:
+            raise RuntimeError(f"instance {instance['id']} was generated at tau_frac={tf} but "
+                               f"geom.TAU_FRAC={geom.TAU_FRAC}; set FIXIT_TAU_FRAC={tf}")
+
+        self.table_text, self.id_map = build_part_table(self.broken,
+                                                        reveal_fixable=not self.hard)
+        self.pid_of_link = {pt["link"]: pid for pid, pt in self.id_map.items()}
+        self.target_pids = [self.pid_of_link[ln] for ln in self.faulty_links
+                            if ln in self.pid_of_link]
+        self.target_pid = self.target_pids[0] if self.target_pids else None
+
         self.sim_count = 0
         self.invalid_count = 0
-        self.history = []          # list of dicts: {mode, action_str, eval}
-        self.best = None           # best simulated {eval, spec, action_str, score}
+        self.reset_count = 0
+        self.history = []          # list of dicts: {mode, action_str, eval, think, backtrack}
+        self.best = None           # best simulated {eval, specs, action_str}
         self.terminal = False
-        self._img_cache = {}       # action_str -> [PIL images] (SIMULATE is deterministic per action)
+        self.working_specs = []    # stack contract: raw specs accumulated so far
+        self._eval_seq = 0         # candidate filenames must be UNIQUE -- see _evaluate_specs
+        self._img_cache = {}       # state key -> [PIL images] (a state is deterministic per key)
         self._annotated = None
         # baseline reference: the ORIGINAL broken part geometry (link frame), shown every turn
         self._broken_states = _part_states(self.broken, self.id_map)
@@ -120,10 +167,10 @@ class FridgeRepairEnv:
             self.center, self.dist = R.camera_from_urdf(self.healthy)   # locked to healthy shape
             with quiet():
                 self._annotated = views.annotated_part_view(self.broken, self.id_map,
-                                                            self.center, self.dist)
-        ev = self._evaluate_spec(None, "broken")     # broken as-is
+                                                            self.center, self.dist, hard=self.hard)
+        ev = self._evaluate_specs([], "broken")     # broken as-is
         self.reset_eval = ev
-        # cache the ORIGINAL broken object's closed+open views -> shown every turn as the "before"
+        # cache the ORIGINAL broken object's views -> shown every turn as the "before"
         self._broken_views = list(ev.get("images", []))
         obs = {"text": self._render(ev, header="BROKEN OBJECT (initial)", reset=True),
                "eval": ev, "part_table": self.table_text, "target_pid": self.target_pid,
@@ -138,33 +185,53 @@ class FridgeRepairEnv:
             return ({"text": f"INVALID ACTION: {parsed['error']}", "eval": None,
                      "invalid": True}, False, {"error": parsed["error"]})
 
-        act = parsed["action"]
+        actions = parsed["actions"]
         mode = parsed["mode"]
-        spec = None if act["type"] == "no_fix" else _inject_canonical(act["spec"], self.broken)
-        action_str = self._action_str(act)
-        ev = self._evaluate_spec(spec, action_str)
+        is_reset = bool(actions) and actions[0]["type"] == "reset"
+        is_no_fix = bool(actions) and actions[0]["type"] == "no_fix"
+
+        if is_reset:
+            self.working_specs = []
+            self.reset_count += 1
+            specs, action_str = [], "RESET()"
+        elif is_no_fix:
+            specs, action_str = [], "NO_FIX()"
+        else:
+            new = [a["spec"] for a in actions]
+            # batch: the turn's list IS the whole candidate, applied fresh to the broken object.
+            # stack: the turn's single action is appended to the persisted working state.
+            specs = new if self.action_contract == "batch" else self.working_specs + new
+            action_str = self._action_str(actions, specs)
+
+        ev = self._evaluate_specs(specs, action_str)
 
         if mode == "SIMULATE":
             self.sim_count += 1
+            if self.action_contract == "stack" and not is_reset:
+                self.working_specs = specs          # the step sticks
             rec = {"mode": "SIMULATE", "action_str": action_str, "eval": ev,
-                   "backtrack": parsed["backtrack"], "think": parsed.get("think", "")}
+                   "backtrack": parsed["backtrack"], "think": parsed.get("think", ""),
+                   "n_actions": len(actions), "state_specs": len(specs)}
             self.history.append(rec)
             if self.best is None or ev["score"] > self.best["eval"]["score"]:
-                self.best = {"eval": ev, "spec": spec, "action_str": action_str}
+                self.best = {"eval": ev, "specs": list(specs), "action_str": action_str}
             obs = {"text": self._render(ev, header=f"SIMULATE result ({action_str})"),
                    "eval": ev, "invalid": False, "images": self._obs_images(ev)}
             return obs, False, {"budget_left": self.budget - self.sim_count}
 
         # COMMIT (or NO_FIX committed)
         self.terminal = True
+        if self.action_contract == "stack" and not is_reset:
+            self.working_specs = specs
         self.history.append({"mode": "COMMIT", "action_str": action_str, "eval": ev,
-                             "backtrack": parsed["backtrack"], "think": parsed.get("think", "")})
+                             "backtrack": parsed["backtrack"], "think": parsed.get("think", ""),
+                             "n_actions": len(actions), "state_specs": len(specs)})
         return ({"text": self._render(ev, header=f"COMMITTED ({action_str})"), "eval": ev,
                  "invalid": False, "images": self._obs_images(ev)}, True,
                 {"committed_action": action_str})
 
     def auto_commit_best(self):
-        """Budget exhausted with no COMMIT: commit the best-scoring simulated fix (or the broken
+        """Budget exhausted with no COMMIT: commit the best-scoring simulated state (or the broken
         object if nothing was simulated). Returns (observation, eval)."""
         self.terminal = True
         if self.best is not None:
@@ -175,36 +242,61 @@ class FridgeRepairEnv:
         return {"text": self._render(ev, header=f"AUTO-COMMIT best ({action_str})"), "eval": ev}, ev
 
     # ---------------------------------------------------------------- internals
-    def _action_str(self, act):
-        if act["type"] == "no_fix":
-            return "NO_FIX()"
-        s = act["spec"]
-        ax = "XYZ"[s["axis"]]
-        if s["type"] == "translate":
-            return f"TRANSLATE({act['part_id']}, {ax}, {s['value']:.4f})"
-        if s["type"] == "rotate":
-            return f"ROTATE({act['part_id']}, {ax}, {math.degrees(s['value']):.1f})"
-        return f"SCALE({act['part_id']}, {ax}, {s['value']:.4f})"
+    def _action_str(self, actions, specs):
+        """Readable label for the turn. In stack mode the cumulative depth is appended, because the
+        same call means a different candidate depending on what it is stacked on."""
+        s = "; ".join(format_call(a["spec"], a["part_id"]) for a in actions)
+        if len(actions) > 1:
+            s = f"[{s}]"
+        if self.action_contract == "stack":
+            s = f"{s} @depth{len(specs)}"
+        return s
 
-    def _evaluate_spec(self, spec, action_str="broken"):
-        """Apply spec to a COPY of the broken URDF (or evaluate broken as-is if spec is None),
-        score it against the contract, capture part states, and (image modality) render the
-        candidate's views -- cached by action_str, since SIMULATE re-applies to the original broken
-        object, so a repeated action yields identical geometry and identical renders."""
-        if spec is None:
-            cand = self.broken
-            tmp = None
+    def _state_key(self, specs):
+        """Deterministic key for a candidate state -- the ordered specs that produce it."""
+        if not specs:
+            return "broken"
+        return "|".join(f"{s['type']}:{s['link']}:{s['axis']}:{s['value']:.9g}" for s in specs)
+
+    def _build_candidate(self, specs, out_name):
+        """Apply raw (uninjected) specs IN ORDER to a copy of the broken URDF, injecting each op's
+        canonical params from the intermediate state it actually acts on. Returns the final path."""
+        cur, tmps = self.broken, []
+        for i, raw in enumerate(specs):
+            spec = _inject_canonical(raw, cur)
+            name = out_name if i == len(specs) - 1 else f"_i{i}_{out_name}"
+            nxt = corr.apply(cur, spec, name)
+            if cur != self.broken:
+                tmps.append(cur)
+            cur = nxt
+        for t in tmps:
+            if os.path.exists(t):
+                os.remove(t)
+        return cur
+
+    def _evaluate_specs(self, specs, action_str="broken"):
+        """Apply `specs` (possibly empty) to a COPY of the broken URDF, score against the multi-part
+        contract, capture part states, and (image modality) render the candidate's views -- cached
+        by the STATE key, since the same ordered specs always yield identical geometry."""
+        if not specs:
+            cand, tmp = self.broken, None
         else:
-            tmp = corr.apply(self.broken, spec, f"_cand_{self.instance['id']}_{self._tok}.urdf")
+            # The candidate filename must be UNIQUE per evaluation. PyBullet caches parsed URDF and
+            # collision geometry BY FILENAME inside a client, so rewriting one path and re-loading it
+            # returns the FIRST version's bodies: `closes` and `collides` silently freeze at their
+            # first-candidate values while deviation (read from the XML by geom) keeps updating.
+            self._eval_seq += 1
+            tmp = self._build_candidate(
+                specs, f"_cand_{self.instance['id']}_{self._tok}_{self._eval_seq}.urdf")
             cand = tmp
         with quiet():
-            ev = evaluate_repair(cand, self.healthy, self.joint, self.link, client=self.client)
+            ev = evaluate_repair_multi(cand, self.healthy, self.faults, client=self.client)
         ev = dict(ev, states=_part_states(cand, self.id_map))
         if self.state_modality == "image":
-            ev = dict(ev, images=self._render_views(cand, action_str))
+            ev = dict(ev, images=self._render_views(cand, self._state_key(specs)))
         else:
-            # begin/end of the door's activation trajectory: world centres with the target door
-            # driven OPEN (90 deg, start) then SHUT (0 deg, end) -- shows the swing / whether it seats
+            # begin/end of the doors' activation trajectory: world centres with ALL doors driven
+            # OPEN (90 deg, start) then SHUT (0 deg, end) -- shows the swing / whether they seat
             ev = dict(ev, act_start=self._world_states(cand, math.pi / 2),
                       act_end=self._world_states(cand, 0.0))
         if tmp is not None and os.path.exists(tmp):
@@ -214,7 +306,7 @@ class FridgeRepairEnv:
     def _world_states(self, urdf, angle):
         """Per-part WORLD geometry centre with ALL doors driven to `angle`. Reading it at doors-open
         then doors-shut gives the two ends of the activation. ALL doors are moved (not just the faulty
-        one) so the readout never reveals which door is broken."""
+        ones) so the readout never reveals which doors are broken."""
         with quiet():
             body = p.loadURDF(_abs(urdf), [0, 0, 0], useFixedBase=1, physicsClientId=self.client)
             jidx = {}
@@ -235,19 +327,18 @@ class FridgeRepairEnv:
             p.removeBody(body, physicsClientId=self.client)
         return out
 
-    def _render_views(self, cand_urdf, action_str):
-        if action_str in self._img_cache:
-            return self._img_cache[action_str]
+    def _render_views(self, cand_urdf, state_key):
+        if state_key in self._img_cache:
+            return self._img_cache[state_key]
         with quiet():
-            imgs = views.closed_view(cand_urdf, self.center, self.dist, self.id_map)
-        self._img_cache[action_str] = imgs
+            imgs = views.closed_view(cand_urdf, self.center, self.dist, self.id_map, hard=self.hard)
+        self._img_cache[state_key] = imgs
         return imgs
 
     def _obs_images(self, ev, reset=False):
-        """Images attached to an observation. Each turn shows the ORIGINAL broken object (closed+open)
-        as the 'before', then THIS fix (closed+open) as the 'after', so the model compares them
-        (attempts don't stack, so the 'before' is always the initial broken state). Reset shows the
-        labelled part view + the broken closed+open. Empty for the text conditions."""
+        """Images attached to an observation: the ORIGINAL broken object as the 'before', then the
+        current candidate as the 'after'. Reset shows the labelled part view + the broken view.
+        Empty for the text conditions."""
         if self.state_modality != "image":
             return []
         broken = list(getattr(self, "_broken_views", []))
@@ -265,11 +356,13 @@ class FridgeRepairEnv:
                              f"size=[{e[0]:.3f},{e[1]:.3f},{e[2]:.3f}]")
             st, en = ev.get("act_start", {}), ev.get("act_end", {})
             lines.append("")
-            lines.append("your attempt - world centres at the START of activation (doors open):")
+            label = ("current working state" if self.action_contract == "stack" and not reset
+                     else "your attempt")
+            lines.append(f"{label} - world centres at the START of activation (doors open):")
             for pid, pt in self.id_map.items():
                 c = st.get(pt["joint"], [0, 0, 0])
                 lines.append(f"  {pid} {pt['name']:<14} centre=[{c[0]:.3f},{c[1]:.3f},{c[2]:.3f}]")
-            lines.append("your attempt - world centres at the END of activation (doors shut):")
+            lines.append(f"{label} - world centres at the END of activation (doors shut):")
             for pid, pt in self.id_map.items():
                 c = en.get(pt["joint"], [0, 0, 0])
                 lines.append(f"  {pid} {pt['name']:<14} centre=[{c[0]:.3f},{c[1]:.3f},{c[2]:.3f}]")
@@ -277,25 +370,31 @@ class FridgeRepairEnv:
             lines.append("(attached: the labelled parts view, then the BROKEN object with all doors "
                          "CLOSED)")
         else:
-            lines.append("(attached: the ORIGINAL BROKEN object CLOSED, then YOUR FIX applied to it "
-                         "CLOSED - compare before vs after. Parts colour-coded by id as in the "
-                         "labelled view; body grey)")
+            after = ("YOUR CURRENT WORKING STATE" if self.action_contract == "stack"
+                     else "YOUR FIX applied to it")
+            lines.append(f"(attached: the ORIGINAL BROKEN object CLOSED, then {after} CLOSED - "
+                         "compare before vs after. Parts colour-coded as in the labelled view; "
+                         "body grey)")
+        if self.action_contract == "stack" and not reset:
+            lines.append("")
+            lines.append(f"repairs currently applied to the working state: {len(self.working_specs)}"
+                         " (RESET() discards them and returns to the original broken object)")
         lines.append("")
 
         # deviation gradient (the numeric mm) is gated; pass/fail + physical symptoms always shown
-        dev = ([f"pose off by {ev['deviation_mm']:.0f} mm (tolerance {ev['tau_mm']:.0f} mm)"]
+        dev = ([f"worst part off by {ev['deviation_mm']:.0f} mm (tolerance {ev['tau_mm']:.0f} mm)"]
                if self.show_deviation and not ev["within_tol"] else [])
         phys = []
         if not ev["closes"]:
-            phys.append(f"door does not close (jams at {ev['closed_angle_deg']:.0f} deg)")
+            phys.append(f"a door does not close (jams at {ev['closed_angle_deg']:.0f} deg)")
         if ev["collides"]:
             phys.append(f"part collision ({ev['collision_pair'] or 'parts'}, "
                         f"{ev['collision_excess_mm']:.0f} mm over healthy)")
         if ev["PASS"]:
-            lines.append("criteria: ALL PASS (door within tolerance, closes, no collision)")
+            lines.append("criteria: ALL PASS (every part within tolerance, doors close, no collision)")
         else:
             items = dev + phys
             if not items:                       # -deviation and physically fine: pose still wrong
-                items = ["the door is not yet in its correct position"]
+                items = ["at least one part is not yet in its correct position"]
             lines.append("failed criteria: " + "; ".join(items))
         return "\n".join(lines)

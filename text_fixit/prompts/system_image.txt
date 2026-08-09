@@ -6,7 +6,7 @@ Intended function: $function_text
 Success criteria: $success_text
 
 PARTS
-The object is decomposed into rigid parts. Exactly one part may be faulty.
+The object is decomposed into rigid parts. $fault_hint
 $part_table
 
 Part ids (P0, P1, ...) match the labels used in every action. The FIRST message includes an
@@ -15,15 +15,13 @@ door is which.
 
 WHAT YOU SEE
 Each SIMULATE observation gives TWO rendered views (not text coordinates), both with all doors
-CLOSED, so you can compare before vs after your fix:
-  - the ORIGINAL BROKEN object (this "before" is the same every turn, because each action is applied
-    fresh to the original broken object), and
-  - YOUR FIX applied to it.
+CLOSED, so you can compare before vs after:
+  - the ORIGINAL BROKEN object (this "before" is the same every turn), and
+  - the result of your repair.
 CLOSED shows seating: a correct door sits flush against the body with no gap and no overlap; a broken
-one leaves a visible gap, interpenetrates the body / another door, or is mis-sized. Each part keeps
-the same colour as in the labelled reset view (P1, P2, ...); the body is grey. These colours only
-identify the parts - they do NOT mark which door is faulty, so you must work out which door is broken.
-Judge your fix by how much closer the "after" is to correct than the "before".
+one leaves a visible gap, interpenetrates the body / another door, or is mis-sized. The views do NOT
+mark which door is faulty - you must work that out. Judge your repair by how much closer the "after"
+is to correct than the "before".
 
 FRAME AND UNITS
 Right-handed object frame; the axes X, Y, Z are the coordinate axes in the part table (centres and
@@ -32,37 +30,9 @@ bounding boxes). Lengths in metres, rotations in degrees (right-hand rule).
   ROTATE turns the part in place about its own CENTROID, around the given axis.
   SCALE resizes the part along an axis about its hinge-side edge.
 
-ACTION SPACE
-Emit exactly one action:
-  TRANSLATE(part, axis, value)   axis in {X,Y,Z}, value in metres,    $value_grid
-  ROTATE(part, axis, value)      axis in {X,Y,Z}, value in degrees,   $angle_grid
-  SCALE(part, axis, value)       axis in {X,Y,Z}, value a multiplier, $scale_grid
-  NO_FIX()                       the object is already functional
-
-Only parts marked fixable=yes may be targeted. A repair is a single (type, part, axis, value)
-tuple - you may not compose two actions.
-
 TOLERANCE
-A repair passes if the faulty part is restored to within 2.5% of its size, the door still closes,
-and no parts interpenetrate. Faults are generated at 3x this tolerance or larger, so a visible
-discrepancy is real, not noise.
+A repair passes if EVERY faulty part is restored to within $tol_pct of its size, every door still
+closes, and no parts interpenetrate. Faults are generated at 3x this tolerance or larger, so a
+visible discrepancy is real, not noise.
 
-PROCEDURE
-On each turn output exactly one block:
-
-  <think>one or two sentences of reasoning</think>
-  <act>SIMULATE TRANSLATE(P1, Y, -0.04)</act>
-
-Each action is applied FRESH to the original broken object (attempts do not stack) - always issue
-the FULL correction, not a small increment. SIMULATE returns new rendered views. It does not commit.
-
-KEEP GOING until the views show the door fully restored (swings clear, seats flush, no overlap) -
-do not stop early. You have up to $K SIMULATE calls; use them to search and refine. Only COMMIT a
-fix a SIMULATE has shown to be restored:
-
-  <act>COMMIT ROTATE(P2, Z, 6)</act>
-
-Never commit a fix you have seen fail or have not simulated. Only if your last SIMULATE is spent
-without solving it, commit your best attempt. Committing ends the episode and is scored. If a
-simulation convinces you an earlier line of reasoning was wrong, emit <backtrack/> before your next
-<act>. Output nothing outside these tags.
+$contract_block

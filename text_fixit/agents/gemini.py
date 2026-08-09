@@ -17,6 +17,7 @@ import time
 from string import Template
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import geom  # noqa: E402
 import grids  # noqa: E402
 from agents.base import Agent  # noqa: E402
 
@@ -35,6 +36,19 @@ SUCCESS_TEXT = {
 VALUE_GRID_STR = f"any value in [-{grids.TRANSLATE_MAX}, {grids.TRANSLATE_MAX}] m (continuous)"
 ANGLE_GRID_STR = f"any value in [-{int(grids.ANGLE_MAX)}, {int(grids.ANGLE_MAX)}] deg (continuous)"
 SCALE_GRID_STR = f"any multiplier in [{grids.SCALE_MIN}, {grids.SCALE_MAX}] (continuous)"
+
+# How many faults the agent should expect. The hard benchmark says the SAME thing for its composite
+# and its single-fault control set -- naming the fault vocabulary without leaking the count or which
+# doors -- so the two are prompt-identical and directly comparable.
+FAULT_HINT_SINGLE = "Exactly one part may be faulty."
+FAULT_HINT_MULTI = ("One or more parts may be faulty, and a faulty part may have more than one "
+                    "thing wrong with it - its position, its orientation and its size can all be "
+                    "wrong at once.")
+# The observation sentence differs by modality only; it is injected INTO the shared contract block
+# so the batch/stack prompts differ in nothing else.
+SIM_RETURNS = {"text": "SIMULATE returns the resulting part states at the start and end of the "
+                       "doors' activation, plus the criteria that failed.",
+               "image": "SIMULATE returns new rendered views."}
 
 
 def _load(name):
@@ -57,7 +71,11 @@ def _png_bytes(pil):
 class GeminiAgent(Agent):
     IMAGE_HISTORY_WINDOW = 2            # attach actual images only for the last N user turns
 
-    def __init__(self, oneshot=False, model=None, temperature=0.7, max_tokens=8192,
+    # Composite instances make the model think much harder: gemini-3.1-pro was observed spending
+    # ~15.7k thought tokens on a single turn. With max_output_tokens=8192 the visible <act> was then
+    # starved and the call came back empty / MALFORMED_FUNCTION_CALL, so the cap has to clear the
+    # thinking budget by a wide margin.
+    def __init__(self, oneshot=False, model=None, temperature=0.7, max_tokens=32768,
                  history="window3", thinking=True):
         assert history in ("window3", "full")
         self.oneshot = oneshot
@@ -74,8 +92,14 @@ class GeminiAgent(Agent):
         self._system_tmpl = _load("system.txt")
         self._system_img_tmpl = _load("system_image.txt")
         self._step_tmpl = _load("step.txt")
+        self._contract_tmpl = {"batch": _load("contract_batch.txt"),
+                               "stack": _load("contract_stack.txt")}
         self._client = None
         self._messages = []             # running transcript for history="full"
+        # last-call telemetry, drained by run_episode into the turn log (see runlog.py)
+        self.last_meta = {}
+        self.last_prompt = None
+        self.last_raw = None
 
     def reset(self):
         self._messages = []
@@ -91,13 +115,27 @@ class GeminiAgent(Agent):
 
     def _system_prompt(self, env):
         cat = env.instance.get("category", "Refrigerator")
-        tmpl = self._system_img_tmpl if getattr(env, "state_modality", "text") == "image" \
-            else self._system_tmpl
+        modality = getattr(env, "state_modality", "text")
+        hard = getattr(env, "hard", False)
+        contract = getattr(env, "action_contract", "batch")
+        tmpl = self._system_img_tmpl if modality == "image" else self._system_tmpl
+
+        # `hard` doubles as "the fixable column is hidden" and "faults may be composite" -- both are
+        # properties of the hard benchmark, and gating on it reproduces the legacy prompt exactly.
+        fixable_note = ("" if hard else
+                        "Only parts marked fixable=yes may be targeted.\n")
+        contract_block = self._contract_tmpl[contract].safe_substitute(
+            value_grid=VALUE_GRID_STR, angle_grid=ANGLE_GRID_STR, scale_grid=SCALE_GRID_STR,
+            K=(0 if self.oneshot else env.budget), fixable_note=fixable_note,
+            sim_returns=SIM_RETURNS[modality])
+
         return tmpl.safe_substitute(
             category=cat, instance_id=env.instance["id"],
             function_text=FUNCTION_TEXT.get(cat, ""), success_text=SUCCESS_TEXT.get(cat, ""),
-            part_table=env.table_text, value_grid=VALUE_GRID_STR, angle_grid=ANGLE_GRID_STR,
-            scale_grid=SCALE_GRID_STR, K=(0 if self.oneshot else env.budget))
+            part_table=env.table_text, fault_hint=(FAULT_HINT_MULTI if hard else FAULT_HINT_SINGLE),
+            tol_pct=f"{geom.TAU_FRAC * 100:.1f}%", contract_block=contract_block,
+            value_grid=VALUE_GRID_STR, angle_grid=ANGLE_GRID_STR, scale_grid=SCALE_GRID_STR,
+            K=(0 if self.oneshot else env.budget))
 
     def _history_text(self, env):
         hist = [h for h in env.history if h["mode"] == "SIMULATE"][-3:]
@@ -140,7 +178,8 @@ class GeminiAgent(Agent):
             note = (f"\nSIMULATE calls remaining: {budget_left}. Keep simulating and refining until "
                     "one returns ALL PASS; do not commit before then.")
         return (f"{obs['text']}{note}\n\nOutput your next action now "
-                "(one <think> block and one <act> block).")
+                "(one <think> block and one <act> block). Write the action as literal TEXT inside "
+                "the <act> tags - it is not a tool or function call.")
 
     def act(self, ctx):
         env, obs = ctx["env"], ctx["obs"]
@@ -149,14 +188,17 @@ class GeminiAgent(Agent):
         if self.history == "full" and not self.oneshot:
             if ctx.get("retry_error"):
                 # same turn, correcting an invalid reply: the bad reply is already in the transcript
-                self._messages.append(_msg("user",
-                    f"Your previous output was invalid: {ctx['retry_error']}. "
-                    "Re-emit exactly one <think> and one <act> block with a valid action."))
+                user = (f"Your previous output was invalid: {ctx['retry_error']}. "
+                        "Re-emit exactly one <think> and one <act> block with a valid action.")
+                self._messages.append(_msg("user", user))
             else:
-                self._messages.append(_msg("user", self._obs_message(env, obs, ctx["budget_left"]),
-                                           images=obs.get("images", [])))
+                user = self._obs_message(env, obs, ctx["budget_left"])
+                self._messages.append(_msg("user", user, images=obs.get("images", [])))
+            self.last_prompt = {"system": system, "user": user,
+                                "transcript_turns": len(self._messages)}
             raw = self._generate_messages(system)
             self._messages.append(_msg("model", raw))
+            self.last_raw = raw
             return raw
 
         # window3 (bounded) and oneshot: stateless single-message call
@@ -164,9 +206,11 @@ class GeminiAgent(Agent):
         if ctx.get("retry_error"):
             step += (f"\n\nYour previous output was invalid: {ctx['retry_error']}. "
                      "Re-emit exactly one <think> and one <act> block with a valid action.")
+        self.last_prompt = {"system": system, "user": step, "transcript_turns": 1}
         raw = self._generate(system, step)
         if self.oneshot:                       # force a single commit, no matter what it emitted
             raw = re.sub(r"\bSIMULATE\b", "COMMIT", raw, flags=re.IGNORECASE)
+        self.last_raw = raw
         return raw
 
     def _cfg(self):
@@ -207,22 +251,54 @@ class GeminiAgent(Agent):
         return contents
 
     def _call(self, contents, system, retries=3):
+        """One model call, with retries. Everything about the call -- latency, token usage, finish
+        reason, every failed attempt and its error -- lands in self.last_meta, which run_episode
+        drains into turns.jsonl / raw/<id>.jsonl so no API detail is lost."""
         client = self._client_lazy()
         cfg = self._cfg()
         cfg.system_instruction = system
         last = None
+        meta = {"model": self.model, "temperature": self.temperature,
+                "max_output_tokens": self.max_tokens, "history_mode": self.history,
+                "thinking": bool(getattr(cfg, "thinking_config", None)),
+                "attempts": [], "errors": [], "usage": None, "finish_reason": None,
+                "latency_s": None}
+        self.last_meta = meta
+        t0 = time.time()
         for i in range(retries):
+            a0 = time.time()
             try:
                 resp = client.models.generate_content(model=self.model, contents=contents, config=cfg)
                 txt = resp.text or ""
+                um = getattr(resp, "usage_metadata", None)
+                usage = {k: getattr(um, k, None) for k in
+                         ("prompt_token_count", "candidates_token_count", "thoughts_token_count",
+                          "total_token_count")} if um else None
+                fr = None
+                try:
+                    fr = str(resp.candidates[0].finish_reason)
+                except Exception:  # noqa: BLE001 - shape varies by SDK version
+                    pass
+                meta["attempts"].append({"i": i, "ok": bool(txt.strip()), "usage": usage,
+                                         "finish_reason": fr, "seconds": round(time.time() - a0, 2),
+                                         "empty": not txt.strip()})
+                meta["usage"], meta["finish_reason"] = usage, fr
                 if txt.strip():
+                    meta["latency_s"] = round(time.time() - t0, 2)
                     return txt
+                meta["errors"].append({"i": i, "error": "empty reply", "finish_reason": fr})
             except Exception as e:  # noqa: BLE001 - network/quota; back off and retry
                 last = e
+                meta["attempts"].append({"i": i, "ok": False, "error": str(e),
+                                         "seconds": round(time.time() - a0, 2)})
+                meta["errors"].append({"i": i, "error": str(e), "type": type(e).__name__})
                 # a model that rejects the thinking config -> drop it and retry without thinking
                 if getattr(cfg, "thinking_config", None) is not None:
                     cfg.thinking_config = None
+                    meta["thinking"] = False
                 time.sleep(1.5 * (i + 1))
+        meta["latency_s"] = round(time.time() - t0, 2)
+        meta["gave_up"] = True
         return f"<think>api error: {last}</think><act>COMMIT NO_FIX()</act>"
 
     def _generate_messages(self, system):
