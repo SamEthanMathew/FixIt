@@ -236,6 +236,10 @@ if __name__ == "__main__":
                     help="hard benchmark: hide the part table's fixable/role columns and render "
                          "doors in one neutral colour from a less favourable yaw")
     ap.add_argument("--model", default=None, help="sets GEMINI_MODEL for this run")
+    ap.add_argument("--shard", default=None, metavar="I/N",
+                    help="run only instances i where i %% N == I (0-indexed). Episodes are "
+                         "independent, so a condition can be split across processes and merged; "
+                         "each shard writes runs/<run>/<agent>/ under its own --run name")
     ap.add_argument("--report-only", action="store_true",
                     help="rebuild the report from existing runs/<run>/<agent>/records.jsonl, no runs")
     args = ap.parse_args()
@@ -271,6 +275,11 @@ if __name__ == "__main__":
             rng.shuffle(instances)
         if args.limit:
             instances = instances[:args.limit]
+    if args.shard:
+        i, n = (int(x) for x in args.shard.split("/"))
+        instances = [inst for k, inst in enumerate(instances) if k % n == i]
+        print(f"shard {i}/{n}: {len(instances)} instances", flush=True)
+
     run_dir = os.path.join(HERE, "runs", args.run)
     os.makedirs(run_dir, exist_ok=True)
 
