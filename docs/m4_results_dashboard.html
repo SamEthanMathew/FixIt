@@ -1,0 +1,497 @@
+<title>Composite-Fault Benchmark — Results, 9 Aug 2026</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ground:        #eef1f5;
+    --surface:       #fcfcfb;
+    --surface-sunk:  #e6eaf0;
+    --rule:          #d3d9e2;
+    --rule-soft:     #e4e8ee;
+    --ink:           #0b0b0b;
+    --ink-2:         #52514e;
+    --ink-3:         #7b7f88;
+    --series-image:  #2a78d6;
+    --series-text:   #eb6834;
+    --good:          #0ca30c;
+    --critical:      #d03b3b;
+    --shadow:        0 1px 2px rgba(16,22,32,.06), 0 8px 24px -12px rgba(16,22,32,.18);
+
+    --display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --data: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground:       #101316;
+      --surface:      #1a1a19;
+      --surface-sunk: #15171a;
+      --rule:         #33373d;
+      --rule-soft:    #26292e;
+      --ink:          #ffffff;
+      --ink-2:        #c3c2b7;
+      --ink-3:        #8b8f97;
+      --series-image: #3987e5;
+      --series-text:  #d95926;
+      --good:         #0ca30c;
+      --critical:     #d03b3b;
+      --shadow:       0 1px 2px rgba(0,0,0,.5), 0 8px 24px -12px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground:       #101316;
+    --surface:      #1a1a19;
+    --surface-sunk: #15171a;
+    --rule:         #33373d;
+    --rule-soft:    #26292e;
+    --ink:          #ffffff;
+    --ink-2:        #c3c2b7;
+    --ink-3:        #8b8f97;
+    --series-image: #3987e5;
+    --series-text:  #d95926;
+    --good:         #0ca30c;
+    --critical:     #d03b3b;
+    --shadow:       0 1px 2px rgba(0,0,0,.5), 0 8px 24px -12px rgba(0,0,0,.7);
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+    padding: clamp(20px, 4vw, 56px) clamp(16px, 4vw, 40px) 72px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+
+  .eyebrow {
+    font-family: var(--data); font-size: 11px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--ink-3); margin: 0 0 10px;
+  }
+  h1 {
+    font-family: var(--display); font-weight: 600;
+    font-size: clamp(30px, 5vw, 46px); line-height: 1.1; letter-spacing: -.01em;
+    margin: 0 0 14px; text-wrap: balance;
+  }
+  .standfirst { font-size: 18px; color: var(--ink-2); max-width: 62ch; margin: 0; }
+  h2 {
+    font-family: var(--display); font-weight: 600; font-size: 23px;
+    margin: 0 0 4px; letter-spacing: -.005em; text-wrap: balance;
+  }
+  .sub { color: var(--ink-2); font-size: 14.5px; margin: 0 0 20px; max-width: 68ch; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-radius: 10px; padding: clamp(18px, 3vw, 28px); box-shadow: var(--shadow);
+  }
+
+  /* ── verdict tiles ─────────────────────────────────────────── */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); gap: 14px; }
+  .tile {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 10px;
+    padding: 18px 18px 16px; box-shadow: var(--shadow);
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .tile .k { font-family: var(--data); font-size: 10.5px; letter-spacing: .12em;
+             text-transform: uppercase; color: var(--ink-3); }
+  .tile .v { font-family: var(--display); font-size: 38px; line-height: 1;
+             font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .tile .n { font-size: 13px; color: var(--ink-2); }
+  .tile.flag .v { color: var(--critical); }
+  .tile.ok .v { color: var(--good); }
+
+  /* ── hypothesis ledger ─────────────────────────────────────── */
+  .ledger { display: flex; flex-direction: column; gap: 0; }
+  .row {
+    display: grid; grid-template-columns: 62px 1fr 152px; gap: 16px;
+    padding: 16px 0; border-top: 1px solid var(--rule-soft); align-items: start;
+  }
+  .row:first-child { border-top: none; }
+  .row .id { font-family: var(--data); font-size: 13px; color: var(--ink-3); padding-top: 2px; }
+  .row .claim { font-size: 14.5px; }
+  .row .claim b { font-weight: 600; }
+  .row .claim .said { color: var(--ink-2); display: block; margin-top: 3px; font-size: 13.5px; }
+  .chip {
+    font-family: var(--data); font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: 5px; border: 1px solid currentColor;
+    display: inline-block; white-space: nowrap; font-weight: 600;
+  }
+  .chip.conf { color: var(--good); }
+  .chip.ref  { color: var(--critical); }
+  .chip.un   { color: var(--ink-3); }
+
+  /* ── charts ────────────────────────────────────────────────── */
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin: 0 0 18px; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px;
+                 font-size: 13px; color: var(--ink-2); }
+  .swatch { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+  .scroll { overflow-x: auto; }
+  svg { display: block; max-width: 100%; height: auto; }
+  .grid-line { stroke: var(--rule-soft); stroke-width: 1; }
+  .axis-line { stroke: var(--rule); stroke-width: 1; }
+  .tick { font-family: var(--data); font-size: 10.5px; fill: var(--ink-3);
+          font-variant-numeric: tabular-nums; }
+  .catlab { font-size: 12.5px; fill: var(--ink-2); }
+  .catlab.strong { fill: var(--ink); font-weight: 600; }
+  .vallab { font-family: var(--data); font-size: 11px; fill: var(--ink-2);
+            font-variant-numeric: tabular-nums; }
+  .panel-title { font-size: 13px; fill: var(--ink); font-weight: 600; }
+  .hit { fill: transparent; cursor: pointer; }
+  .hit:focus-visible { outline: 2px solid var(--series-image); outline-offset: 1px; }
+  .dot { stroke: var(--surface); stroke-width: 2; }
+
+  .tip {
+    position: fixed; pointer-events: none; opacity: 0; transition: opacity .1s;
+    background: var(--surface); color: var(--ink); border: 1px solid var(--rule);
+    border-radius: 7px; padding: 8px 11px; font-size: 12.5px; box-shadow: var(--shadow);
+    z-index: 20; max-width: 250px; line-height: 1.45;
+  }
+  .tip b { font-family: var(--data); font-variant-numeric: tabular-nums; }
+
+  /* ── matrix / tables ───────────────────────────────────────── */
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--rule-soft); }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-family: var(--data); font-size: 10.5px; letter-spacing: .1em;
+       text-transform: uppercase; color: var(--ink-3); font-weight: 500; }
+  td.num { font-family: var(--data); font-variant-numeric: tabular-nums; }
+  td.zero { color: var(--critical); font-weight: 600; }
+  tr.band td { background: var(--surface-sunk); }
+  details { margin-top: 18px; }
+  summary { cursor: pointer; font-size: 13px; color: var(--ink-2); }
+  summary:focus-visible { outline: 2px solid var(--series-image); outline-offset: 2px; }
+
+  .notes { font-size: 13.5px; color: var(--ink-2); }
+  .notes p { margin: 0 0 10px; max-width: 72ch; }
+  .notes code { font-family: var(--data); font-size: 12.5px;
+                background: var(--surface-sunk); padding: 1px 5px; border-radius: 4px; }
+  footer { color: var(--ink-3); font-size: 12.5px; border-top: 1px solid var(--rule);
+           padding-top: 18px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">FixIt · Stage-1 · experiment log · 9 August 2026</p>
+    <h1>Composite faults put the repair task out of reach — and reveal that text observations make things worse</h1>
+    <p class="standfirst">300 closed-loop episodes across two models, two action contracts and two
+    observation modalities, on a benchmark where the ground-truth fix is verified reachable in the
+    agent's own action space. Predictions were registered before the run.</p>
+  </header>
+
+  <section class="tiles">
+    <div class="tile flag">
+      <span class="k">Composite, all conditions</span>
+      <span class="v">0<span style="font-size:22px;color:var(--ink-3)">/200</span></span>
+      <span class="n">Both models, both contracts, both modalities</span>
+    </div>
+    <div class="tile">
+      <span class="k">Hardened single fault</span>
+      <span class="v">4–20%</span>
+      <span class="n">Was 33–57% before hardening</span>
+    </div>
+    <div class="tile ok">
+      <span class="k">Oracle ceiling</span>
+      <span class="v">100%</span>
+      <span class="n">Same instances — every fix is reachable</span>
+    </div>
+    <div class="tile">
+      <span class="k">Still 0% at</span>
+      <span class="v">3×&#8202;τ</span>
+      <span class="n">Not a tight-tolerance artifact</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>The predictions, and what happened</h2>
+    <p class="sub">Registered in the experiment doc before any model ran, so these verdicts are
+    outcomes rather than narration.</p>
+    <div class="ledger">
+      <div class="row">
+        <span class="id">H1</span>
+        <span class="claim"><b>Composition dominates.</b>
+          <span class="said">Predicted under 20%. Observed 0 of 200 — and the agent never once
+          simulated a passing state, so it is a search failure, not a commit-policy failure.</span>
+        </span>
+        <span><span class="chip conf">Confirmed</span></span>
+      </div>
+      <div class="row">
+        <span class="id">H2</span>
+        <span class="claim"><b>Stacking beats batching.</b>
+          <span class="said">Both floor at 0%. Stack is mildly less destructive on graded progress
+          (−7% vs −15%, image) but not directionally across levels. 148 <code>RESET()</code> calls,
+          so the affordance was used, not ignored.</span>
+        </span>
+        <span><span class="chip un">Unsupported</span></span>
+      </div>
+      <div class="row">
+        <span class="id">H3</span>
+        <span class="claim"><b>Two doors are harder than one.</b>
+          <span class="said">Not testable here. Both are 0% on pass, and partial credit is
+          confounded — a two-door instance contains a door carrying only one sub-fault, which is far
+          easier to move toward tolerance. Needs a level-matched design.</span>
+        </span>
+        <span><span class="chip un">Not testable</span></span>
+      </div>
+      <div class="row">
+        <span class="id">H4</span>
+        <span class="claim"><b>The hardened control drops only modestly, to 25–40%.</b>
+          <span class="said">Observed 4–20%. Off-grid magnitudes and a tighter tolerance cut
+          single-fault repair 3–4×, so more of the earlier 40–57% was grid-bin luck than we had
+          credited. This corrects our own prior numbers.</span>
+        </span>
+        <span><span class="chip ref">Refuted</span></span>
+      </div>
+      <div class="row">
+        <span class="id">H5</span>
+        <span class="claim"><b>The image advantage narrows or inverts.</b>
+          <span class="said">It widened, in every cell — and text does not merely fail, it makes the
+          object worse than it was found. The clearest effect in the study.</span>
+        </span>
+        <span><span class="chip ref">Refuted</span></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Where the performance went</h2>
+    <p class="sub">Success rate across the three benchmark generations, on the same fridge shapes.
+    Hardening alone accounts for most of the fall; composition takes both models to zero.</p>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--series-image)"></i> Image observations</span>
+      <span><i class="swatch" style="background:var(--series-text)"></i> Text observations</span>
+    </div>
+    <div class="scroll" id="slope"></div>
+    <details>
+      <summary>Table view</summary>
+      <table>
+        <thead><tr><th>Model / modality</th><th>Prior benchmark</th><th>Hardened single fault</th><th>Composite</th></tr></thead>
+        <tbody>
+          <tr><td>gemini-3.1-pro · image</td><td class="num">49%</td><td class="num">12%</td><td class="num zero">0%</td></tr>
+          <tr><td>gemini-3.1-pro · text</td><td class="num">41%</td><td class="num">4%</td><td class="num zero">0%</td></tr>
+          <tr><td>robotics-er-2 · image</td><td class="num">57%</td><td class="num">20%</td><td class="num zero">0%</td></tr>
+          <tr><td>robotics-er-2 · text</td><td class="num">33%</td><td class="num">16%</td><td class="num zero">0%</td></tr>
+        </tbody>
+      </table>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>Text observations are actively destructive</h2>
+    <p class="sub">Share of the initial geometric error removed by the end of the episode. Everything
+    sits left of zero — every condition, on average, left the object worse than it found it — but the
+    text conditions are two to eight times worse than their image counterparts. With three
+    superimposed defects the per-part coordinate readout stops decomposing into one interpretable
+    axis error, while a rendered view still shows which door looks wrong.</p>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--series-image)"></i> Image observations</span>
+      <span><i class="swatch" style="background:var(--series-text)"></i> Text observations</span>
+    </div>
+    <div class="scroll" id="dev"></div>
+    <details>
+      <summary>Table view — including how often each condition ended worse than it started</summary>
+      <table>
+        <thead><tr><th>Condition</th><th>Error removed</th><th>Ended worse</th><th>Solved</th></tr></thead>
+        <tbody id="devtable"></tbody>
+      </table>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>Loosening the tolerance does not rescue it</h2>
+    <p class="sub">Success recomputed from the logged per-part deviations as if the pass tolerance had
+    been wider. 1.67× is exactly the old benchmark's 2.5% bar. The composite set stays at zero all the
+    way to 3× — roughly double the original tolerance — so the floor is not an artifact of the bar we
+    set. Geometry only, with the physical gates held at their observed values, so these are upper
+    bounds.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Condition</th><th>1× (as run)</th><th>1.67×</th><th>2×</th><th>3×</th></tr></thead>
+        <tbody>
+          <tr class="band"><td>Composite — all 8 conditions</td><td class="num zero">0%</td><td class="num zero">0%</td><td class="num zero">0%</td><td class="num zero">0%</td></tr>
+          <tr><td>Control · robotics-er-2 · image</td><td class="num">20%</td><td class="num">20%</td><td class="num">20%</td><td class="num">20%</td></tr>
+          <tr><td>Control · robotics-er-2 · text</td><td class="num">16%</td><td class="num">16%</td><td class="num">16%</td><td class="num">20%</td></tr>
+          <tr><td>Control · gemini-3.1-pro · image</td><td class="num">12%</td><td class="num">24%</td><td class="num">24%</td><td class="num">24%</td></tr>
+          <tr><td>Control · gemini-3.1-pro · text</td><td class="num">4%</td><td class="num">4%</td><td class="num">4%</td><td class="num">4%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card notes">
+    <h2>What the benchmark is now for</h2>
+    <p>The composite set is beyond both off-the-shelf models. As a way of ranking <em>today's
+    models</em> it carries no signal — everything is zero. That is the intended outcome for its
+    purpose: there is now a large, verified gap between off-the-shelf performance and the oracle, on
+    a task where the closed loop is necessary rather than decorative. It is the benchmark for ranking
+    <em>methods</em>.</p>
+    <p>The hardened single-fault control is the well-calibrated benchmark for ranking models today.
+    It still separates them cleanly — robotics-er-2 at 20% against gemini-3.1-pro at 12% on image —
+    and preserves the modality ordering seen everywhere else.</p>
+    <p>Two follow-ups the data argues for: an intermediate rung at two sub-faults rather than three,
+    to find where performance leaves the floor (which a level-matched H3 test also needs); and a
+    redesign of the symbolic channel, since under composition it is not merely uninformative but
+    harmful.</p>
+  </section>
+
+  <section class="card notes">
+    <h2>Method and integrity</h2>
+    <p><b>Task.</b> Repair a broken PartNet-Mobility refrigerator in PyBullet. A repair passes only
+    if every faulty part is within tolerance <em>and</em> every faulty door still closes <em>and</em>
+    no parts interpenetrate beyond the healthy baseline. Tolerance τ = 1.5% of the door's bounding-box
+    diagonal (≈12–29 mm), down from 2.5%.</p>
+    <p><b>Instances.</b> 25 composite (10 one-door, 15 two-door; exactly three sub-faults each — one
+    translate, one rotate, one scale) and 25 hardened single-fault controls, each on a distinct
+    fridge. Verified before running: the ground-truth fix restores every part to
+    <code>0.000000 mm</code>; dropping any one fix leaves ≥3.03τ of residual error; all magnitudes
+    off-grid; oracle 100% and random 0–4% under both contracts.</p>
+    <p><b>Conditions.</b> Deviation number hidden, budget 10 simulations, dynamic thinking, full
+    per-episode context. The two contracts share every prompt line except one swapped block.</p>
+    <p><b>Integrity.</b> 5 of 300 episodes touched an API give-up (1.7%). 25 invalid actions across
+    3,100 turns (0.8%) after one reparse retry. Every episode, turn, prompt and image sent to the
+    model is on disk — 2,621 turn records, 2,621 prompt dumps, 2,930 images, 1:1 with the episodes.</p>
+  </section>
+
+  <footer>
+    Full write-up: <code>docs/EXPERIMENT_2026-08-09_composite_faults.md</code> ·
+    Raw tables: <code>runs/_analysis/m4_final.{md,json}</code> ·
+    Charts use a palette validated for colour-vision deficiency (worst pair ΔE 31.8 of a 15 floor).
+  </footer>
+</div>
+
+<div class="tip" id="tip" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  var NS = "http://www.w3.org/2000/svg";
+  function el(n, a) { var e = document.createElementNS(NS, n); for (var k in a) e.setAttribute(k, a[k]); return e; }
+  var tip = document.getElementById("tip");
+  function bind(node, html) {
+    function show(ev) {
+      tip.innerHTML = html;
+      tip.style.opacity = 1;
+      var x = (ev.clientX || 0) + 14, y = (ev.clientY || 0) + 14;
+      var w = tip.offsetWidth, h = tip.offsetHeight;
+      if (x + w > innerWidth - 8) x = innerWidth - w - 8;
+      if (y + h > innerHeight - 8) y = (ev.clientY || 0) - h - 12;
+      tip.style.left = x + "px"; tip.style.top = y + "px";
+    }
+    node.addEventListener("mousemove", show);
+    node.addEventListener("mouseenter", show);
+    node.addEventListener("focus", function (e) {
+      var r = node.getBoundingClientRect();
+      show({ clientX: r.left + r.width / 2, clientY: r.top });
+    });
+    node.addEventListener("mouseleave", function () { tip.style.opacity = 0; });
+    node.addEventListener("blur", function () { tip.style.opacity = 0; });
+  }
+
+  var IMG = "var(--series-image)", TXT = "var(--series-text)";
+
+  /* ── slope panels: three benchmark generations ───────────────── */
+  var slopeData = [
+    { model: "gemini-3.1-pro", series: [
+      { name: "Image", color: IMG, v: [49, 12, 0] },
+      { name: "Text",  color: TXT, v: [41, 4, 0] } ] },
+    { model: "robotics-er-2", series: [
+      { name: "Image", color: IMG, v: [57, 20, 0] },
+      { name: "Text",  color: TXT, v: [33, 16, 0] } ] }
+  ];
+  var stages = ["Prior benchmark", "Hardened 1-fault", "Composite"];
+  (function () {
+    var pw = 400, ph = 250, gap = 46, W = pw * 2 + gap, H = ph;
+    var m = { t: 30, r: 22, b: 46, l: 40 };
+    var iw = pw - m.l - m.r, ih = ph - m.t - m.b;
+    var svg = el("svg", { viewBox: "0 0 " + W + " " + H, width: W, role: "img",
+      "aria-label": "Success rate falling from the prior benchmark to the hardened control to zero on composite, for both models and both modalities." });
+    slopeData.forEach(function (panel, pi) {
+      var ox = pi * (pw + gap);
+      var g = el("g", { transform: "translate(" + ox + ",0)" });
+      g.appendChild(Object.assign(el("text", { x: m.l, y: 15, class: "panel-title" }), { textContent: panel.model }));
+      [0, 20, 40, 60].forEach(function (t) {
+        var y = m.t + ih - (t / 60) * ih;
+        g.appendChild(el("line", { x1: m.l, x2: m.l + iw, y1: y, y2: y, class: t === 0 ? "axis-line" : "grid-line" }));
+        g.appendChild(Object.assign(el("text", { x: m.l - 8, y: y + 3.5, class: "tick", "text-anchor": "end" }), { textContent: t + "%" }));
+      });
+      stages.forEach(function (s, i) {
+        var x = m.l + (iw / 2) * i;
+        g.appendChild(Object.assign(el("text", { x: x, y: m.t + ih + 20, class: "catlab", "text-anchor": i === 0 ? "start" : i === 2 ? "end" : "middle" }), { textContent: s }));
+      });
+      panel.series.forEach(function (s) {
+        var pts = s.v.map(function (v, i) { return [m.l + (iw / 2) * i, m.t + ih - (v / 60) * ih]; });
+        g.appendChild(el("polyline", { points: pts.map(function (p) { return p.join(","); }).join(" "),
+          fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round" }));
+        pts.forEach(function (p, i) {
+          g.appendChild(el("circle", { cx: p[0], cy: p[1], r: 4.5, fill: s.color, class: "dot" }));
+          var lab = el("text", { x: p[0] + (i === 2 ? -10 : i === 0 ? 10 : 0), y: p[1] - 11,
+            class: "vallab", "text-anchor": i === 2 ? "end" : i === 0 ? "start" : "middle" });
+          lab.textContent = s.v[i] + "%";
+          g.appendChild(lab);
+          var hit = el("circle", { cx: p[0], cy: p[1], r: 14, class: "hit", tabindex: "0",
+            role: "img", "aria-label": panel.model + " " + s.name + " " + stages[i] + " " + s.v[i] + " percent" });
+          bind(hit, "<b>" + s.v[i] + "%</b> success<br>" + panel.model + " · " + s.name.toLowerCase() + "<br>" + stages[i]);
+          g.appendChild(hit);
+        });
+      });
+      svg.appendChild(g);
+    });
+    document.getElementById("slope").appendChild(svg);
+  })();
+
+  /* ── deviation-closed bars ───────────────────────────────────── */
+  var devRows = [
+    { g: "Composite · batch", m: "Image", c: IMG, v: -14.8, w: 50, n: 50, s: 0 },
+    { g: "Composite · batch", m: "Text",  c: TXT, v: -42.4, w: 74, n: 50, s: 0 },
+    { g: "Composite · stack", m: "Image", c: IMG, v: -7.0,  w: 50, n: 50, s: 0 },
+    { g: "Composite · stack", m: "Text",  c: TXT, v: -35.6, w: 66, n: 50, s: 0 },
+    { g: "Control · gemini-3.1-pro", m: "Image", c: IMG, v: -21.7, w: 60, n: 25, s: 3 },
+    { g: "Control · gemini-3.1-pro", m: "Text",  c: TXT, v: -75.7, w: 88, n: 25, s: 1 },
+    { g: "Control · robotics-er-2",  m: "Image", c: IMG, v: -1.4,  w: 40, n: 25, s: 5 },
+    { g: "Control · robotics-er-2",  m: "Text",  c: TXT, v: -30.8, w: 56, n: 25, s: 4 }
+  ];
+  (function () {
+    var W = 760, rowH = 30, padTop = 34, padBot = 34, L = 196, R = 26;
+    var H = padTop + devRows.length * rowH + padBot;
+    var iw = W - L - R, min = -80, max = 6;
+    var x0 = L + iw * (0 - min) / (max - min);
+    var sx = function (v) { return L + iw * (v - min) / (max - min); };
+    var svg = el("svg", { viewBox: "0 0 " + W + " " + H, width: W, role: "img",
+      "aria-label": "Share of initial error removed, by condition. All bars extend left of zero, meaning every condition on average made the object worse; text bars are far longer than image bars." });
+    [-80, -60, -40, -20, 0].forEach(function (t) {
+      svg.appendChild(el("line", { x1: sx(t), x2: sx(t), y1: padTop - 12, y2: H - padBot + 4,
+        class: t === 0 ? "axis-line" : "grid-line" }));
+      svg.appendChild(Object.assign(el("text", { x: sx(t), y: H - padBot + 20, class: "tick", "text-anchor": "middle" }), { textContent: t + "%" }));
+    });
+    svg.appendChild(Object.assign(el("text", { x: sx(0) + 6, y: padTop - 18, class: "tick" }), { textContent: "0 = ended as it began" }));
+    devRows.forEach(function (r, i) {
+      var y = padTop + i * rowH, bh = 15, by = y + (rowH - bh) / 2 - 4;
+      if (r.m === "Image") {
+        var lab = el("text", { x: 0, y: by + 22, class: "catlab strong" });
+        lab.textContent = r.g; svg.appendChild(lab);
+      }
+      var w = Math.max(2, x0 - sx(r.v));
+      svg.appendChild(el("rect", { x: sx(r.v), y: by, width: w, height: bh, rx: 4, fill: r.c }));
+      svg.appendChild(el("rect", { x: x0 - 2, y: by, width: 2, height: bh, fill: "var(--surface)" }));
+      var vl = el("text", { x: sx(r.v) - 7, y: by + 12, class: "vallab", "text-anchor": "end" });
+      vl.textContent = r.v.toFixed(1) + "%"; svg.appendChild(vl);
+      var hit = el("rect", { x: L, y: by - 4, width: iw, height: bh + 8, class: "hit", tabindex: "0",
+        role: "img", "aria-label": r.g + " " + r.m + ", " + r.v + " percent of error removed" });
+      bind(hit, "<b>" + r.v.toFixed(1) + "%</b> of initial error removed<br>" + r.g + " · " + r.m.toLowerCase() +
+        "<br>Ended worse in <b>" + r.w + "%</b> of episodes<br>Solved <b>" + r.s + "/" + r.n + "</b>");
+      svg.appendChild(hit);
+    });
+    document.getElementById("dev").appendChild(svg);
+    var tb = document.getElementById("devtable");
+    devRows.forEach(function (r) {
+      var tr = document.createElement("tr");
+      tr.innerHTML = "<td>" + r.g + " · " + r.m + "</td><td class='num'>" + r.v.toFixed(1) +
+        "%</td><td class='num'>" + r.w + "%</td><td class='num'>" + r.s + "/" + r.n + "</td>";
+      tb.appendChild(tr);
+    });
+  })();
+})();
+</script>
