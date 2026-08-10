@@ -1,0 +1,4 @@
+{
+ "note": "n_simulate = number of SIMULATE tries before COMMIT (hard cap 10). deviation OFF.",
+ "runs": {}
+}

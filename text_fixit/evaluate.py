@@ -92,16 +92,21 @@ def compute_metrics(records):
 
 
 def run_agent(agent_name, instances, run_dir, budget, modality, deviation, seed,
-              contract="batch", hard=False, instances_path=None):
+              contract="batch", hard=False, instances_path=None,
+              reveal_fixable=None, hard_render=None, multi_fault_hint=None):
     """Run one agent over the instance list, logging EVERYTHING (see runlog.RunLogger): per-episode
     records, per-turn reasoning/raw output/prompts/images/API metadata, errors, and a readable
     trajectory per episode."""
     env = FridgeRepairEnv(budget=budget, state_modality=modality, show_deviation=deviation,
-                          action_contract=contract, hard=hard)
+                          action_contract=contract, hard=hard,
+                          reveal_fixable=reveal_fixable, hard_render=hard_render,
+                          multi_fault_hint=multi_fault_hint)
     agent = _make_agent(agent_name, seed=seed)
     logger = RunLogger(run_dir, agent_name)
     logger.manifest(agent=agent_name, model=getattr(agent, "model", None), budget=budget,
                     modality=modality, show_deviation=deviation, contract=contract, hard=hard,
+                    reveal_fixable=env.reveal_fixable, hard_render=env.hard_render,
+                    multi_fault_hint=env.multi_fault_hint,
                     tau_frac=geom.TAU_FRAC, seed=seed, n_instances=len(instances),
                     instances_path=instances_path,
                     instance_ids=[i["id"] for i in instances],
@@ -238,8 +243,15 @@ if __name__ == "__main__":
                     help="batch = ordered action LIST applied fresh; stack = one action per turn "
                          "onto a persisted working state (+RESET)")
     ap.add_argument("--hard", action="store_true",
-                    help="hard benchmark: hide the part table's fixable/role columns and render "
-                         "doors in one neutral colour from a less favourable yaw")
+                    help="hard-benchmark preset: hide the part table's fixable/role columns, render "
+                         "doors in one neutral colour from a less favourable yaw, and tell the agent "
+                         "faults may be composite. The three switches below override it individually")
+    ap.add_argument("--reveal-fixable", dest="reveal_fixable", action="store_true", default=None,
+                    help="show the role/fixable columns even under --hard")
+    ap.add_argument("--no-hard-render", dest="hard_render", action="store_false", default=None,
+                    help="use the per-part palette and the favourable yaw even under --hard")
+    ap.add_argument("--no-multi-fault-hint", dest="multi_fault_hint", action="store_false",
+                    default=None, help="tell the agent exactly one part may be faulty")
     ap.add_argument("--model", default=None, help="sets GEMINI_MODEL for this run")
     ap.add_argument("--thinking-budget", type=int, default=None,
                     help="cap per-turn thinking tokens (default: dynamic/uncapped). When set, the "
@@ -304,7 +316,10 @@ if __name__ == "__main__":
             records = run_agent(agent_name, instances, run_dir, args.budget, args.modality,
                                 (args.deviation == "on"), args.seed,
                                 contract=args.contract, hard=args.hard,
-                                instances_path=instances_path)
+                                instances_path=instances_path,
+                                reveal_fixable=args.reveal_fixable,
+                                hard_render=args.hard_render,
+                                multi_fault_hint=args.multi_fault_hint)
         per_agent[agent_name] = compute_metrics(records)
         per_agent_records[agent_name] = records
         print(f"  -> {agent_name}: success={per_agent[agent_name]['success_rate']:.2f} "

@@ -128,10 +128,13 @@ class GeminiAgent(Agent):
         contract = getattr(env, "action_contract", "batch")
         tmpl = self._system_img_tmpl if modality == "image" else self._system_tmpl
 
-        # `hard` doubles as "the fixable column is hidden" and "faults may be composite" -- both are
-        # properties of the hard benchmark, and gating on it reproduces the legacy prompt exactly.
-        fixable_note = ("" if hard else
-                        "Only parts marked fixable=yes may be targeted.\n")
+        # These two are independent switches on the env (see FridgeRepairEnv.__init__); `hard` is
+        # only their default, so a run can reveal the fixable column while keeping the composite
+        # fault hint, or vice versa.
+        reveal_fixable = getattr(env, "reveal_fixable", not hard)
+        multi_hint = getattr(env, "multi_fault_hint", hard)
+        fixable_note = ("Only parts marked fixable=yes may be targeted.\n" if reveal_fixable
+                        else "")
         contract_block = self._contract_tmpl[contract].safe_substitute(
             value_grid=VALUE_GRID_STR, angle_grid=ANGLE_GRID_STR, scale_grid=SCALE_GRID_STR,
             K=(0 if self.oneshot else env.budget), fixable_note=fixable_note,
@@ -140,7 +143,8 @@ class GeminiAgent(Agent):
         return tmpl.safe_substitute(
             category=cat, instance_id=env.instance["id"],
             function_text=FUNCTION_TEXT.get(cat, ""), success_text=SUCCESS_TEXT.get(cat, ""),
-            part_table=env.table_text, fault_hint=(FAULT_HINT_MULTI if hard else FAULT_HINT_SINGLE),
+            part_table=env.table_text,
+            fault_hint=(FAULT_HINT_MULTI if multi_hint else FAULT_HINT_SINGLE),
             tol_pct=f"{geom.TAU_FRAC * 100:.1f}%", contract_block=contract_block,
             thinking_note=self._thinking_note(),
             value_grid=VALUE_GRID_STR, angle_grid=ANGLE_GRID_STR, scale_grid=SCALE_GRID_STR,

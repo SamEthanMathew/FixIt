@@ -109,7 +109,17 @@ class FridgeRepairEnv:
     """See the module docstring for the observation toggles and the two action contracts."""
 
     def __init__(self, budget=6, state_modality="text", show_deviation=True,
-                 action_contract="batch", hard=False):
+                 action_contract="batch", hard=False,
+                 reveal_fixable=None, hard_render=None, multi_fault_hint=None):
+        """`hard` is a preset for the three hardening switches below; each can be overridden
+        independently, because they are separable difficulties and worth varying one at a time:
+
+          reveal_fixable    show the part table's role/fixable columns (False = the agent must work
+                            out which parts are repairable)
+          hard_render       one neutral colour for every door + an adverse camera yaw
+          multi_fault_hint  tell the agent that several parts, and several faults per part, are
+                            possible (without revealing the count)
+        """
         assert state_modality in ("text", "image")
         assert action_contract in ("batch", "stack")
         self.budget = budget
@@ -117,6 +127,9 @@ class FridgeRepairEnv:
         self.show_deviation = show_deviation
         self.action_contract = action_contract
         self.hard = hard
+        self.reveal_fixable = (not hard) if reveal_fixable is None else reveal_fixable
+        self.hard_render = hard if hard_render is None else hard_render
+        self.multi_fault_hint = hard if multi_fault_hint is None else multi_fault_hint
         self.client = p.connect(p.DIRECT)
         # unique token so concurrent runs (the conditions share the same instances) never clobber
         # each other's temp candidate URDF written beside the meshes.
@@ -145,7 +158,7 @@ class FridgeRepairEnv:
                                f"geom.TAU_FRAC={geom.TAU_FRAC}; set FIXIT_TAU_FRAC={tf}")
 
         self.table_text, self.id_map = build_part_table(self.broken,
-                                                        reveal_fixable=not self.hard)
+                                                        reveal_fixable=self.reveal_fixable)
         self.pid_of_link = {pt["link"]: pid for pid, pt in self.id_map.items()}
         self.target_pids = [self.pid_of_link[ln] for ln in self.faulty_links
                             if ln in self.pid_of_link]
@@ -167,7 +180,7 @@ class FridgeRepairEnv:
             self.center, self.dist = R.camera_from_urdf(self.healthy)   # locked to healthy shape
             with quiet():
                 self._annotated = views.annotated_part_view(self.broken, self.id_map,
-                                                            self.center, self.dist, hard=self.hard)
+                                                            self.center, self.dist, hard=self.hard_render)
         ev = self._evaluate_specs([], "broken")     # broken as-is
         self.reset_eval = ev
         # cache the ORIGINAL broken object's views -> shown every turn as the "before"
@@ -331,7 +344,7 @@ class FridgeRepairEnv:
         if state_key in self._img_cache:
             return self._img_cache[state_key]
         with quiet():
-            imgs = views.closed_view(cand_urdf, self.center, self.dist, self.id_map, hard=self.hard)
+            imgs = views.closed_view(cand_urdf, self.center, self.dist, self.id_map, hard=self.hard_render)
         self._img_cache[state_key] = imgs
         return imgs
 
