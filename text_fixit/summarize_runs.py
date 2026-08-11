@@ -122,13 +122,25 @@ def summarize(label, recs, tau_idx=None):
         "by": {},
     }
     row.update(graded(recs, tau_idx or {}))
-    for key in ("corruption_type", "level"):
-        groups = sorted({r.get(key) for r in recs if r.get(key)})
-        if len(groups) <= 1 and key == "level":
+
+    def _pair(r):
+        """Which TYPES compose a multi-fault instance, e.g. 'rotate+scale'. Derived from the record's
+        existing `fault_types`, so no instance-schema or run_episode change is needed. M5 showed the
+        models are lopsided in opposite directions by fault type, so on the n=2 rung the PAIR may
+        matter more than the count -- this is the M6 H4 breakdown."""
+        ft = r.get("fault_types") or []
+        return "+".join(sorted(ft)) if len(ft) > 1 else None
+
+    getters = {"corruption_type": lambda r: r.get("corruption_type"),
+               "level": lambda r: r.get("level"),
+               "fault_pair": _pair}
+    for key, get in getters.items():
+        groups = sorted({g for g in (get(r) for r in recs) if g})
+        if len(groups) <= 1 and key in ("level", "fault_pair"):
             continue
         row["by"][key] = {}
         for g in groups:
-            sub = [r for r in recs if r.get(key) == g]
+            sub = [r for r in recs if get(r) == g]
             sv = [r for r in sub if r["terminal_pass"]]
             row["by"][key][g] = {
                 "n": len(sub), "solved": len(sv),
@@ -171,7 +183,8 @@ def render(name, rows, note):
                 continue
             L.append(f"| {r['label']} | " + " | ".join(
                 f"{100 * s[k]:.0f}%" for k in ("1.0x", "1.667x", "2.0x", "3.0x")) + " |")
-    for key, title in (("corruption_type", "By fault type"), ("level", "By difficulty level")):
+    for key, title in (("corruption_type", "By fault type"), ("level", "By difficulty level"),
+                       ("fault_pair", "By fault-type pair")):
         blocks = [r for r in rows if key in r["by"]]
         if not blocks:
             continue
@@ -195,6 +208,13 @@ GROUPS = {
                   ("robotics-er-2 image", "base_er_image")]),
     "m4": ("Composite-fault hard benchmark (deviation OFF, budget 10, tau 1.5%, hard mode). "
            "Shards of one condition are merged.", None),
+    "m6": ("The n=2 rung: 2 sub-faults, level-matched arms (2fault_1door vs 2fault_2door), "
+           "type-pair stratified. reveal_fixable ON, hard render + multi-fault hint ON, "
+           "deviation OFF, budget 10, tau 1.5%. Shards merged.", None),
+    "m5": ("Hardened SINGLE-fault control with the part table's fixable/role columns REVEALED "
+           "(hard render + multi-fault hint still on; deviation OFF, budget 10, tau 1.5%). "
+           "Isolates the reveal_fixable switch against m4's control arms, and adds the stack "
+           "contract that m4 skipped as redundant for a one-action fix. Shards are merged.", None),
 }
 
 
@@ -205,12 +225,13 @@ def main():
     args = ap.parse_args()
     note, spec = GROUPS[args.group]
 
-    if spec is None:      # m4: discover runs and merge shards (…_s0 / …_s1 -> one condition)
+    if spec is None:      # discover runs named <group>_* and merge shards (…_s0 / …_s1 -> one cond)
+        prefix = f"{args.group}_"
         found = {}
-        for d in sorted(glob.glob(os.path.join(RUNS, "m4_*"))):
+        for d in sorted(glob.glob(os.path.join(RUNS, prefix + "*"))):
             cond = os.path.basename(d)
             base = cond[:-3] if cond.endswith(("_s0", "_s1", "_s2", "_s3")) else cond
-            found.setdefault(base[3:], []).append(d)
+            found.setdefault(base[len(prefix):], []).append(d)
         spec = [(k, v) for k, v in sorted(found.items())]
     else:
         spec = [(lbl, [os.path.join(RUNS, r)]) for lbl, r in spec]

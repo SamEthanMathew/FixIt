@@ -140,24 +140,33 @@ def oracle_roundtrip(broken, healthy, faults, gt_seq, cid, tag="rt"):
     return ev
 
 
-def build_composite(base, doors, split, layout, seed, cid):
-    """One composite instance: 3 sub-faults (one per type) on 1 or 2 doors.
+def build_composite(base, doors, split, layout, seed, cid, types=None,
+                    level_prefix="composite", seed_tag="composite", iid_tag="comp"):
+    """One multi-fault instance: n sub-faults (one per entry of `types`) spread over 1 or 2 doors.
 
-    layout: "1door" -> all three on doors[0]; "2door" -> two on one door, one on the other.
+    layout: "1door" -> all n on one door; "2door" -> split across two, ceil(n/2) + floor(n/2).
+    types:  the corruption types to compose, one sub-fault each. Defaults to all three (M4's
+            composite set). M6 passes a PAIR, which is what makes the n=2 rung.
+    level_prefix / seed_tag / iid_tag: keep each generated set in its own id and RNG namespace, so
+            a new set never collides with or perturbs an existing one. The defaults reproduce M4's
+            `instances_hard.jsonl` draw-for-draw.
     Returns the instance dict, or None if any gate fails.
     """
-    rng = random.Random(f"composite|{base}|{layout}|{seed}")
+    rng = random.Random(f"{seed_tag}|{base}|{layout}|{seed}")
     healthy = os.path.join(ASSETS, base, "mobility.urdf")
 
-    types = list(CTYPES)
+    types = list(CTYPES if types is None else types)
+    n = len(types)
     rng.shuffle(types)                       # application ORDER is randomised (order matters)
     if layout == "1door":
-        chosen = [rng.choice(doors)] * 3
+        chosen = [rng.choice(doors)] * n
     else:
         a, b = rng.sample(doors, 2)
-        # two types land on one door, one on the other; which door gets the pair is seeded
+        # the larger share lands on one door, the rest on the other; which door is seeded.
+        # n=3 -> 2+1 (M4's assignment burden); n=2 -> 1+1 (M6, one fault per door).
         pair_first = rng.random() < 0.5
-        chosen = [a, a, b] if pair_first else [a, b, b]
+        k = (n + 1) // 2
+        chosen = ([a] * k + [b] * (n - k)) if pair_first else ([a] * (n - k) + [b] * k)
 
     # SCALE MUST BE APPLIED FIRST on its part, for the agent's action space to be able to express
     # the inverse. Two reasons, both about corruption._edit_scale:
@@ -187,13 +196,13 @@ def build_composite(base, doors, split, layout, seed, cid):
             return None
         specs.append(spec)
         invs.append(inv)
-        nxt = corr.apply(cur, spec, f"_stage{k}_{base}_{layout}.urdf")
+        nxt = corr.apply(cur, spec, f"_stage{k}_{base}_{seed_tag}_{layout}.urdf")
         if cur is not healthy:
             stage_tmps.append(cur)
         cur = nxt
     stage_tmps.append(cur)
 
-    iid = f"{base}_comp{layout}_{seed}"
+    iid = f"{base}_{iid_tag}{layout}_{seed}"
     broken = _apply_chain(healthy, specs, f"_hard_{iid}.urdf")
     for t in stage_tmps:                                    # drop the sampling scratch files
         if os.path.exists(t) and os.path.abspath(t) != os.path.abspath(broken):
@@ -205,10 +214,69 @@ def build_composite(base, doors, split, layout, seed, cid):
     gt_seq = [{"part_name": pt["name"], "link": pt["link"], "joint": pt["joint"], "spec": iv}
               for pt, iv in reversed(list(zip(chosen, invs)))]
 
-    rec = _finish(iid, base, split, f"composite_{layout}", faults, gt_seq, healthy, broken, cid)
+    rec = _finish(iid, base, split, f"{level_prefix}_{layout}", faults, gt_seq, healthy, broken, cid)
     if rec is None and os.path.exists(broken):
         os.remove(broken)
     return rec
+
+
+# --------------------------------------------------------------------------- M6: the n=2 rung
+
+PAIRS = (("translate", "rotate"), ("translate", "scale"), ("rotate", "scale"))
+
+
+def build_two_fault(inv, split_of, seed, per_pair, cid):
+    """The M6 set: 2 sub-faults per instance, level-matched across the two arms.
+
+      2fault_2door : one sub-fault on each of two doors
+      2fault_1door : both sub-faults on one door
+
+    Both arms need exactly TWO correct actions, so PASS is directly comparable between them -- which
+    is what M4's n=3 H3 test could not claim (its 2door arm always contained a door carrying only one
+    of the three faults). Each arm is stratified `per_pair` instances across the three type pairs,
+    because M5 showed the two models are lopsided in OPPOSITE directions by fault type, so which two
+    types compose may matter more than that there are two.
+
+    Every base is used at most once across the whole set.
+    """
+    rng = random.Random(f"2fault|{seed}")
+    two = sorted(b for b, d in inv.items() if len(d) >= 2)
+    one = sorted(b for b, d in inv.items() if len(d) == 1)
+    rng.shuffle(two)
+    rng.shuffle(one)
+    out, used, short = [], set(), []
+
+    def fill(layout, pool, pair):
+        got = 0
+        for base in pool:
+            if got >= per_pair:
+                break
+            if base in used:
+                continue
+            rec = build_composite(base, inv[base], split_of[base], layout, seed, cid,
+                                  types=list(pair), level_prefix="2fault",
+                                  seed_tag="2fault", iid_tag="2f")
+            if rec:
+                out.append(rec)
+                used.add(base)
+                got += 1
+            else:
+                print(f"  drop {layout} {base} {'+'.join(pair)} (gate)")
+        if got < per_pair:
+            short.append(f"{layout} {'+'.join(pair)}: {got}/{per_pair}")
+        return got
+
+    # two-door arm first -- only `two` can host it, and it is the scarce resource
+    for pair in PAIRS:
+        fill("2door", two, pair)
+    # one-door arm from what is left, preferring single-door shapes so the scarce two-door
+    # bases are not consumed by an arm that does not need them
+    for pair in PAIRS:
+        fill("1door", [b for b in one + two if b not in used], pair)
+
+    if short:
+        print("  UNDER-FILLED CELLS (recorded, not silently padded): " + "; ".join(short))
+    return out
 
 
 def build_control(base, doors, split, seed, ctype, cid):
@@ -326,8 +394,14 @@ def _finish(iid, base, split, level, faults, gt_seq, healthy, broken, cid):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--set", default="composite", choices=["composite", "2fault"],
+                    help="composite = M4's n=3 set + its single-fault control; "
+                         "2fault = M6's n=2 rung (level-matched arms, type-pair stratified)")
+    ap.add_argument("--per-pair", type=int, default=5,
+                    help="2fault: instances per type pair per arm (5 -> 15 per arm, 30 total)")
     ap.add_argument("--out-composite", default=os.path.join(HERE, "data", "instances_hard.jsonl"))
     ap.add_argument("--out-control", default=os.path.join(HERE, "data", "instances_control.jsonl"))
+    ap.add_argument("--out-2fault", default=os.path.join(HERE, "data", "instances_2fault.jsonl"))
     ap.add_argument("--allow-default-tau", action="store_true",
                     help="permit generating at the default 0.025 (normally a hard error)")
     args = ap.parse_args()
@@ -341,6 +415,12 @@ def main():
     two = sorted(b for b, d in inv.items() if len(d) >= 2)
     one = sorted(b for b, d in inv.items() if len(d) == 1)
     print(f"shapes usable: {len(inv)}   >=2 doors: {len(two)}   1 door: {len(one)}")
+
+    if args.set == "2fault":
+        rows = build_two_fault(inv, split_of, args.seed, args.per_pair, cid)
+        p.disconnect(cid)
+        _write_sets(((args.out_2fault, rows, "2fault"),))
+        return
 
     rng = random.Random(args.seed)
     rng.shuffle(two)
@@ -388,9 +468,12 @@ def main():
         else:
             print(f"  drop control {base} (gate)")
     p.disconnect(cid)
+    _write_sets(((args.out_composite, composite, "composite"),
+                 (args.out_control, control, "control")))
 
-    for path, rows, label in ((args.out_composite, composite, "composite"),
-                              (args.out_control, control, "control")):
+
+def _write_sets(specs):
+    for path, rows, label in specs:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w") as f:
             for r in rows:
@@ -401,6 +484,13 @@ def main():
         for r in rows:
             by_level[r["level"]] = by_level.get(r["level"], 0) + 1
         print(f"  levels: {by_level}")
+        pairs = {}
+        for r in rows:
+            if len(r.get("fault_types", [])) > 1:
+                k = "+".join(sorted(r["fault_types"]))
+                pairs[k] = pairs.get(k, 0) + 1
+        if pairs:
+            print(f"  fault-type combinations: {pairs}")
         if rows:
             assert len(bases) == len(rows), f"{label}: base reuse"
             assert all(r["gt_fixed_pass"] for r in rows), f"{label}: an instance is unsolvable"

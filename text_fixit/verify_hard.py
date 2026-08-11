@@ -135,6 +135,16 @@ def check_submagnitudes(rec, cid):
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--sets", default=None,
+                    help="comma-separated name=path pairs to verify "
+                         "(default: the M4 composite + control sets)")
+    ap.add_argument("--out", default="verify_hard",
+                    help="basename under runs/_analysis/ for the .log and .json evidence")
+    args = ap.parse_args()
+    sets = SETS if not args.sets else dict(s.split("=", 1) for s in args.sets.split(","))
+
     if abs(geom.TAU_FRAC - TARGET_TAU_FRAC) > 1e-12:
         raise SystemExit(f"TAU_FRAC is {geom.TAU_FRAC}; run with FIXIT_TAU_FRAC={TARGET_TAU_FRAC}")
 
@@ -142,7 +152,7 @@ def main():
     report, ok = {"tau_frac": geom.TAU_FRAC, "sets": {}}, True
     lines = [f"# Hard-benchmark verification (TAU_FRAC={geom.TAU_FRAC})", ""]
 
-    for name, rel in SETS.items():
+    for name, rel in sets.items():
         rows = [json.loads(l) for l in open(_abs(rel))]
         per, fails = [], []
         for rec in rows:
@@ -201,7 +211,7 @@ def main():
                   f"- failures: {fails or 'none'}", ""]
 
     # part-table hardening: the fixable/role columns must actually disappear
-    sample = json.loads(open(_abs(SETS["composite"])).readline())
+    sample = json.loads(open(_abs(next(iter(sets.values())))).readline())
     shown, _ = build_part_table(_abs(sample["broken_urdf"]), reveal_fixable=True)
     hidden, _ = build_part_table(_abs(sample["broken_urdf"]), reveal_fixable=False)
     table_ok = ("fixable" in shown) and ("fixable" not in hidden) and ("yes" not in hidden)
@@ -217,12 +227,12 @@ def main():
 
     out_dir = os.path.join(HERE, "runs", "_analysis")
     os.makedirs(out_dir, exist_ok=True)
-    with open(os.path.join(out_dir, "verify_hard.json"), "w") as f:
+    with open(os.path.join(out_dir, f"{args.out}.json"), "w") as f:
         json.dump(report, f, indent=2)
-    with open(os.path.join(out_dir, "verify_hard.log"), "w") as f:
+    with open(os.path.join(out_dir, f"{args.out}.log"), "w") as f:
         f.write("\n".join(lines))
     print("\n" + "\n".join(lines[-2:]))
-    print(f"-> {out_dir}/verify_hard.log  and  verify_hard.json")
+    print(f"-> {out_dir}/{args.out}.log  and  {args.out}.json")
     sys.exit(0 if ok else 1)
 
 

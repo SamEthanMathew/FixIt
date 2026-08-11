@@ -1,3 +1,8 @@
+# Secrets — API keys live here, NEVER commit
+.env
+.env.*
+!.env.example
+
 # Dataset (large — never commit; download separately)
 data.zip
 *.zip

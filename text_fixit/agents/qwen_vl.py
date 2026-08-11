@@ -61,7 +61,14 @@ def _normalize(raw):
 
 
 class QwenVLAgent(GeminiAgent):
-    def __init__(self, oneshot=False, model=None, temperature=0.7, max_tokens=1536,
+    # 4096, not the original 1536: Qwen3-VL-Instruct has no separate thinking channel, so the
+    # <think> block the prompt asks for competes for the SAME output budget as the <act> line. On a
+    # multi-fault instance 1536 is a plausible truncation point, and a truncated turn scores as an
+    # INVALID ACTION -- i.e. as a model failure when it is really a harness cap (the same trap M4
+    # hit with Gemini at max_output_tokens=8192). Not raised further because the server runs at
+    # --max-model-len 32768 TOTAL: with image observations and history="full" the prompt grows for
+    # ten turns, and output tokens have to leave room for it.
+    def __init__(self, oneshot=False, model=None, temperature=0.7, max_tokens=4096,
                  history="window3", base_url=None, timeout=180):
         # thinking=False: Qwen3-VL-Instruct has no separate thinking channel; the <think> block the
         # prompt asks for is ordinary output text.
@@ -104,7 +111,15 @@ class QwenVLAgent(GeminiAgent):
 
     def _call(self, contents, system, retries=3):
         """contents is either the OpenAI message list (history='full') or a single step string
-        (window3 / oneshot), matching how GeminiAgent's two _generate paths call in."""
+        (window3 / oneshot), matching how GeminiAgent's two _generate paths call in.
+
+        Populates self.last_meta exactly as GeminiAgent._call does. This is not bookkeeping polish:
+        run_episode reads `last_meta["gave_up"]` to count API give-ups, and drains latency / usage /
+        finish_reason into turns.jsonl and raw/<id>.jsonl. Without it the fallback below --
+        `COMMIT NO_FIX()` -- is INDISTINGUISHABLE from the model genuinely giving up, so a dead or
+        OOM'd vLLM server would score a whole condition as a legitimate 0% instead of as broken
+        infrastructure.
+        """
         requests = self._client_lazy()
         messages = [{"role": "system", "content": system}]
         messages += contents if isinstance(contents, list) \
@@ -112,18 +127,51 @@ class QwenVLAgent(GeminiAgent):
         payload = {"model": self.model, "messages": messages,
                    "temperature": self.temperature, "max_tokens": self.max_tokens}
         last = None
+        meta = {"model": self.model, "temperature": self.temperature,
+                "max_output_tokens": self.max_tokens, "history_mode": self.history,
+                "base_url": self.base_url, "thinking": False,
+                "attempts": [], "errors": [], "usage": None, "finish_reason": None,
+                "latency_s": None}
+        self.last_meta = meta
+        t0 = time.time()
         for i in range(retries):
+            a0 = time.time()
             try:
                 r = requests.post(f"{self.base_url}/chat/completions", json=payload,
                                   timeout=self.timeout)
                 r.raise_for_status()
-                txt = (r.json()["choices"][0]["message"]["content"] or "")
+                body = r.json()
+                choice = body["choices"][0]
+                txt = (choice["message"]["content"] or "")
+                um = body.get("usage") or None
+                usage = {k: um.get(k) for k in
+                         ("prompt_tokens", "completion_tokens", "total_tokens")} if um else None
+                fr = choice.get("finish_reason")
+                meta["attempts"].append({"i": i, "ok": bool(txt.strip()), "usage": usage,
+                                        "finish_reason": fr, "seconds": round(time.time() - a0, 2),
+                                        "empty": not txt.strip()})
+                meta["usage"], meta["finish_reason"] = usage, fr
                 if txt.strip():
+                    # "length" means the reply was cut off mid-emission -- the <act> block may be
+                    # missing, which the parser will report as an invalid action. Record it so a
+                    # truncation is never silently read as a model mistake (see max_tokens above).
+                    if fr == "length":
+                        meta["errors"].append({"i": i, "error": "truncated at max_tokens",
+                                               "finish_reason": fr})
+                        meta["truncated"] = True
+                    meta["latency_s"] = round(time.time() - t0, 2)
                     return _normalize(txt)
                 last = "empty completion"
+                meta["errors"].append({"i": i, "error": "empty completion", "finish_reason": fr})
             except Exception as e:  # noqa: BLE001 - server not up / OOM / timeout; back off and retry
                 last = e
+                meta["attempts"].append({"i": i, "ok": False, "error": str(e),
+                                        "seconds": round(time.time() - a0, 2)})
+                meta["errors"].append({"i": i, "error": str(e), "type": type(e).__name__})
                 time.sleep(1.5 * (i + 1))
         # Same parseable fallback as GeminiAgent so a dead server scores as a failed episode
-        # rather than crashing the sweep.
+        # rather than crashing the sweep -- but flagged, so it is counted as an infrastructure
+        # failure (record["n_api_giveup"]) and not as the model choosing NO_FIX.
+        meta["latency_s"] = round(time.time() - t0, 2)
+        meta["gave_up"] = True
         return f"<think>server error: {last}</think><act>COMMIT NO_FIX()</act>"
