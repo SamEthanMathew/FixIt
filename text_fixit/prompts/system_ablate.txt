@@ -23,5 +23,13 @@ A repair passes if EVERY faulty part is restored to within $tol_pct of its size,
 closes, and no parts interpenetrate. Faults are generated at ${margin_x}x this tolerance or larger, so a
 reported discrepancy is real, not noise.
 
+FAULT SCALE
+Faults are not subtle. A displaced part is typically moved $translate_range; a tilted part is
+rotated $rotate_range; a mis-sized part is scaled by a factor of $scale_range. Your correction must be of the
+SAME MAGNITUDE in the opposite direction. A few millimetres, or a few degrees, will not fix
+anything.
+If a repair leaves the part still visibly wrong, your magnitude was too SMALL, not too large -
+increase it. Do not shrink an attempt that failed to move the part far enough.
+
 $thinking_note
 $contract_block

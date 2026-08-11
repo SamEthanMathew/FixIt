@@ -51,7 +51,38 @@ SIM_RETURNS = {"text": "SIMULATE returns the resulting part states at the start 
                "image": "SIMULATE returns new rendered views."}
 
 
+def _magnitude_strings(instance):
+    """Human-readable fault magnitude ranges for the $..._range slots in the ablated prompt.
+
+    Read from the INSTANCE (instances_hard.py records `magnitude_ranges` per set), falling back to
+    corruption.py's defaults. This must not be hardcoded: a set generated with --difficulty-scale
+    has much smaller faults, and a prompt quoting the default ranges would push the model toward
+    magnitudes several times too large -- worse than saying nothing at all.
+    """
+    import corruption as _corr
+    r = instance.get("magnitude_ranges") or {}
+    tr = r.get("translate", _corr.TRANSLATE_RANGE)
+    ro = r.get("rotate_deg", _corr.ROTATE_RANGE_DEG)
+    sc = r.get("scale", _corr.SCALE_RANGE)
+    return {"translate_range": f"{tr[0]:.3f}-{tr[1]:.3f} m",
+            "rotate_range": f"{ro[0]:.0f}-{ro[1]:.0f} degrees",
+            "scale_range": f"{sc[0]:.2f}-{sc[1]:.2f}"}
+
+
 def _load(name):
+    """Load a prompt template, honouring the FIXIT_PROMPT_VARIANT ablation switch.
+
+    With FIXIT_PROMPT_VARIANT=ablate, `system.txt` resolves to `system_ablate.txt` IF that file
+    exists, else falls back to the base file. This keeps an ablation from silently half-applying:
+    every template that has a variant swaps, every one that does not stays byte-identical to the
+    runs it is being compared against. The variant used is recorded in the run manifest.
+    """
+    variant = os.environ.get("FIXIT_PROMPT_VARIANT", "").strip()
+    if variant:
+        stem, ext = os.path.splitext(name)
+        alt = os.path.join(_PROMPT_DIR, f"{stem}_{variant}{ext}")
+        if os.path.isfile(alt):
+            name = os.path.basename(alt)
     with open(os.path.join(_PROMPT_DIR, name)) as f:
         return Template(f.read())
 
@@ -146,6 +177,10 @@ class GeminiAgent(Agent):
             part_table=env.table_text,
             fault_hint=(FAULT_HINT_MULTI if multi_hint else FAULT_HINT_SINGLE),
             tol_pct=f"{geom.TAU_FRAC * 100:.1f}%", contract_block=contract_block,
+            # The set's real generation margin, so the prompt never misstates how broken the
+            # instance is. Defaults to 3 -> renders byte-identical to every pre-M8 run.
+            margin_x=f"{env.instance.get('broken_margin', 3.0):g}",
+            **_magnitude_strings(env.instance),
             thinking_note=self._thinking_note(),
             value_grid=VALUE_GRID_STR, angle_grid=ANGLE_GRID_STR, scale_grid=SCALE_GRID_STR,
             K=(0 if self.oneshot else env.budget))

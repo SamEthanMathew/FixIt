@@ -363,6 +363,10 @@ def _finish(iid, base, split, level, faults, gt_seq, healthy, broken, cid):
         "broken_urdf": os.path.relpath(broken, HERE),
         "healthy_urdf": os.path.relpath(healthy, HERE),
         "tau_frac": geom.TAU_FRAC,
+        "broken_margin": corr.BROKEN_MARGIN,
+        "magnitude_ranges": {"translate": list(corr.TRANSLATE_RANGE),
+                             "rotate_deg": list(corr.ROTATE_RANGE_DEG),
+                             "scale": list(corr.SCALE_RANGE)},
         "tau_mm_per_part": {k: v["tau_mm"] for k, v in rb["per_part"].items()},
         "tau_mm": rb["tau_mm"],
         "broken_deviation_mm": rb["deviation_mm"],
@@ -394,17 +398,44 @@ def _finish(iid, base, split, level, faults, gt_seq, healthy, broken, cid):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--set", default="composite", choices=["composite", "2fault"],
+    ap.add_argument("--set", default="composite", choices=["composite", "2fault", "easy"],
                     help="composite = M4's n=3 set + its single-fault control; "
                          "2fault = M6's n=2 rung (level-matched arms, type-pair stratified)")
+    ap.add_argument("--per-type", type=int, default=10,
+                    help="easy: single-fault instances per corruption type (10 -> 30 total)")
+    ap.add_argument("--out-easy", default=os.path.join(HERE, "data", "instances_easy.jsonl"))
     ap.add_argument("--per-pair", type=int, default=5,
                     help="2fault: instances per type pair per arm (5 -> 15 per arm, 30 total)")
     ap.add_argument("--out-composite", default=os.path.join(HERE, "data", "instances_hard.jsonl"))
     ap.add_argument("--out-control", default=os.path.join(HERE, "data", "instances_control.jsonl"))
     ap.add_argument("--out-2fault", default=os.path.join(HERE, "data", "instances_2fault.jsonl"))
+    ap.add_argument("--difficulty-scale", type=float, default=None,
+                    help="scale every corruption magnitude range toward identity (1.0 = unchanged, "
+                         "0.35 = much smaller faults). Translate/rotate ranges are multiplied; the "
+                         "scale range is contracted toward 1.0. This is the knob that actually sets "
+                         "difficulty: landing inside tau when the fault is D*tau needs magnitude "
+                         "accuracy of +/-1/D, and D is driven by the DRAW RANGE, not by "
+                         "--broken-margin (which only sets a floor the draw usually clears already)")
+    ap.add_argument("--broken-margin", type=float, default=None,
+                    help="override corruption.BROKEN_MARGIN: every fault is grown until it displaces "
+                         "the part by at least this many tau. LOWER = genuinely easier, because "
+                         "landing inside tau when the fault is D*tau needs magnitude accuracy of "
+                         "+/-1/D. Recorded per instance as broken_margin")
     ap.add_argument("--allow-default-tau", action="store_true",
                     help="permit generating at the default 0.025 (normally a hard error)")
     args = ap.parse_args()
+
+    if args.difficulty_scale is not None:
+        f = args.difficulty_scale
+        corr.TRANSLATE_RANGE = tuple(v * f for v in corr.TRANSLATE_RANGE)
+        corr.ROTATE_RANGE_DEG = tuple(v * f for v in corr.ROTATE_RANGE_DEG)
+        corr.SCALE_RANGE = tuple(1.0 + (v - 1.0) * f for v in corr.SCALE_RANGE)
+        print(f"difficulty-scale {f}: translate {corr.TRANSLATE_RANGE}, "
+              f"rotate {corr.ROTATE_RANGE_DEG}, scale {corr.SCALE_RANGE}")
+
+    if args.broken_margin is not None:
+        corr.BROKEN_MARGIN = args.broken_margin
+        print(f"BROKEN_MARGIN overridden to {corr.BROKEN_MARGIN}")
 
     if not args.allow_default_tau and abs(geom.TAU_FRAC - TARGET_TAU_FRAC) > 1e-12:
         raise SystemExit(f"TAU_FRAC is {geom.TAU_FRAC}, expected {TARGET_TAU_FRAC}. "
@@ -415,6 +446,29 @@ def main():
     two = sorted(b for b, d in inv.items() if len(d) >= 2)
     one = sorted(b for b, d in inv.items() if len(d) == 1)
     print(f"shapes usable: {len(inv)}   >=2 doors: {len(two)}   1 door: {len(one)}")
+
+    if args.set == "easy":
+        # Single fault, type-balanced, distinct bases. The point of this set is the MARGIN:
+        # pass --broken-margin 1.5 and every fault is only 1.5 tau off, so a correction needs
+        # magnitude accuracy of +/-1/1.5 rather than +/-1/3. See M7 section 6.
+        rng = random.Random(args.seed)
+        cpool = sorted(inv)
+        rng.shuffle(cpool)
+        types = itertools.cycle(CTYPES)
+        rows, want = [], args.per_type * len(CTYPES)
+        for base in cpool:
+            if len(rows) >= want:
+                break
+            rec = build_control(base, inv[base], split_of[base], args.seed, next(types), cid)
+            if rec:
+                rows.append(rec)
+            else:
+                print(f"  drop easy {base} (gate)")
+        if len(rows) < want:
+            print(f"  UNDER-FILLED: {len(rows)}/{want} (recorded, not padded)")
+        p.disconnect(cid)
+        _write_sets(((args.out_easy, rows, "easy"),))
+        return
 
     if args.set == "2fault":
         rows = build_two_fault(inv, split_of, args.seed, args.per_pair, cid)

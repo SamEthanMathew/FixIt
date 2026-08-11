@@ -140,13 +140,15 @@ def main():
     ap.add_argument("--sets", default=None,
                     help="comma-separated name=path pairs to verify "
                          "(default: the M4 composite + control sets)")
+    ap.add_argument("--expect-tau", type=float, default=TARGET_TAU_FRAC,
+                    help="tau_frac this set was generated at (default: the hard benchmark's 0.015)")
     ap.add_argument("--out", default="verify_hard",
                     help="basename under runs/_analysis/ for the .log and .json evidence")
     args = ap.parse_args()
     sets = SETS if not args.sets else dict(s.split("=", 1) for s in args.sets.split(","))
 
-    if abs(geom.TAU_FRAC - TARGET_TAU_FRAC) > 1e-12:
-        raise SystemExit(f"TAU_FRAC is {geom.TAU_FRAC}; run with FIXIT_TAU_FRAC={TARGET_TAU_FRAC}")
+    if abs(geom.TAU_FRAC - args.expect_tau) > 1e-12:
+        raise SystemExit(f"TAU_FRAC is {geom.TAU_FRAC}; run with FIXIT_TAU_FRAC={args.expect_tau}")
 
     cid = p.connect(p.DIRECT)
     report, ok = {"tau_frac": geom.TAU_FRAC, "sets": {}}, True
@@ -162,7 +164,7 @@ def main():
                  "necessity": check_necessity(rec, cid),
                  "offgrid": check_offgrid(rec),
                  "sub_magnitudes": check_submagnitudes(rec, cid),
-                 "tau_frac_ok": abs(rec["tau_frac"] - TARGET_TAU_FRAC) < 1e-12}
+                 "tau_frac_ok": abs(rec["tau_frac"] - args.expect_tau) < 1e-12}
             r["all_pass"] = all([r["invertibility"]["pass"], r["necessity"]["pass"],
                                  r["offgrid"]["pass"], r["tau_frac_ok"]])
             if not r["all_pass"]:
