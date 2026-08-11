@@ -208,6 +208,10 @@ GROUPS = {
                   ("robotics-er-2 image", "base_er_image")]),
     "m4": ("Composite-fault hard benchmark (deviation OFF, budget 10, tau 1.5%, hard mode). "
            "Shards of one condition are merged.", None),
+    "m7": ("Qwen difficulty ladder: is the trainable model compliance-bound or difficulty-bound? "
+           "Same model walked down rungs already calibrated for g3/er -- hardened n=1 control "
+           "(tau 1.5%, hard) and the original easy baseline (tau 2.5%, no hard, train/per-type 25). "
+           "Image only; text is 0/120 across three models (M6). Watch invalid-action rate.", None),
     "m6": ("The n=2 rung: 2 sub-faults, level-matched arms (2fault_1door vs 2fault_2door), "
            "type-pair stratified. reveal_fixable ON, hard render + multi-fault hint ON, "
            "deviation OFF, budget 10, tau 1.5%. Shards merged.", None),
