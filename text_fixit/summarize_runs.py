@@ -208,6 +208,12 @@ GROUPS = {
                   ("robotics-er-2 image", "base_er_image")]),
     "m4": ("Composite-fault hard benchmark (deviation OFF, budget 10, tau 1.5%, hard mode). "
            "Shards of one condition are merged.", None),
+    "m10": ("Qwen difficulty ladder, complete grid: 8B vs 32B-FP8 on every existing rung, all "
+            "window3 + batch + image + budget 10. Rungs: easy (D~1.6) / M7 baseline (D~4.6) / "
+            "hardened control (tau 1.5%) / n=2 composite / n=3 composite.", None),
+    "m9": ("Scale ladder, like-for-like: Qwen3-VL-8B vs 32B-FP8, BOTH under history=window3 "
+           "(history=full makes the 32B drift into prose and fail to emit <act> tags -- 58% invalid). "
+           "Rungs: the M8 easy set (median D=1.6) and M7 easy baseline (er 57% / g3 49%).", None),
     "m8": ("Easier single-fault rung (difficulty-scale 0.35, median D=1.6, tau 2.5%) x prompt "
            "ablation (metasyntax exemplars + explicit fault scale). Qwen3-VL-8B, batch, budget 10.", None),
     "m7": ("Qwen difficulty ladder: is the trainable model compliance-bound or difficulty-bound? "

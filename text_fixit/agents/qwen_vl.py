@@ -69,14 +69,19 @@ class QwenVLAgent(GeminiAgent):
     # --max-model-len 32768 TOTAL: with image observations and history="full" the prompt grows for
     # ten turns, and output tokens have to leave room for it.
     def __init__(self, oneshot=False, model=None, temperature=0.7, max_tokens=4096,
-                 history="window3", base_url=None, timeout=180):
+                 history="window3", base_url=None, timeout=None):
         # thinking=False: Qwen3-VL-Instruct has no separate thinking channel; the <think> block the
         # prompt asks for is ordinary output text.
         super().__init__(oneshot=oneshot, model=model or os.environ.get("QWEN_MODEL", DEFAULT_MODEL),
                          temperature=temperature, max_tokens=max_tokens, history=history,
                          thinking=False)
         self.base_url = (base_url or os.environ.get("QWEN_BASE_URL", DEFAULT_BASE_URL)).rstrip("/")
-        self.timeout = timeout
+        # A 180s default is far too tight for a large model on TEXT observations: the 32B writes
+        # ~790 completion tokens over per-part coordinate tables (vs ~275 on images) and 20% of its
+        # turns ran past 180s. Every one of those became a ReadTimeout -> retry -> gave_up ->
+        # "COMMIT NO_FIX()", i.e. an infrastructure failure wearing a model failure's clothes.
+        # Override with QWEN_TIMEOUT.
+        self.timeout = timeout if timeout is not None else int(os.environ.get("QWEN_TIMEOUT", 180))
         if oneshot:
             self.name = "oneshot_qwen"
         else:
