@@ -82,7 +82,7 @@ Invalid-action rate is **0% on every cell**. 95% Wilson intervals in brackets.
 | n=2 composite (τ1.5%) | **0/30** [0,11] | **0/30** [0,11] | g3 10 best |
 | n=3 composite (τ1.5%) | **0/25** [0,13] | **0/25** [0,13] | both 0/200 |
 
-Easy rung, text modality: 8B 4/30 = 13%; 32B 4/21 = 19% (n=21/30 at time of writing).
+Easy rung, text modality: 8B 4/30 = **13%** [5,30]; 32B 5/30 = **17%** [7,34].
 
 ## 5. What it says
 
@@ -100,10 +100,14 @@ no composition, no multi-part reasoning — both Gemini models score 20% and bot
 Whatever the API models do to estimate a magnitude from a rendered view, neither open model does it
 at either size. This is the central negative result of the ladder.
 
-**Modality: the 32B closes the text gap.** 22–19% on text against 23% on image, where every prior
-result had text strictly worse (M4 composite, M6's 0/120, M7, and the 8B here at 13% vs 17%). Held
-loosely at n=21, but it suggests the symbolic channel becomes usable once the model can parse the
-coordinate tables, rather than being a bad observation format per se.
+**Modality: text stays worse, at both scales. NO CLAIM of a closing gap.** At n=21 this cell read
+19–22% and looked like the 32B had closed the text/image gap; by n=30 it settled at **17% vs 23%**,
+a 6-point gap slightly WIDER in absolute terms than the 8B's (13% vs 17%). The apparent convergence
+was small-sample drift — the cell fell 22% -> 20% -> 19% -> 17% -> 15% -> 17% as n filled. Text
+remains the weaker channel at both scales, consistent with M4/M6/M7. Recorded here because the
+interim reading was reported before it was stable, and it is a standing hazard of reading these
+n=30 cells: at that size a Wilson interval spans roughly +/-13 points and single episodes move the
+headline by 3.
 
 **`ever_simulated_a_pass` tracks the success rate exactly on every cell.** These are search failures,
 not commit-policy failures: the models never produce a passing state to commit.
