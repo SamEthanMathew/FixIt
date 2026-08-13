@@ -1,0 +1,83 @@
+===== SYSTEM =====
+You are repairing a malfunctioning articulated object in a physics simulator.
+
+OBJECT
+Category: Refrigerator          Instance: 12252_ctrl_rotate_0
+Intended function: Open and close the door: the door must swing to 90 degrees without colliding with the body or the other door, and must close flush.
+Success criteria: The faulty door is restored to its correct pose (within tolerance), the door still closes, and no parts interpenetrate.
+
+PARTS
+The object is decomposed into rigid parts. Exactly one part may be faulty.
+  id   label          role       fixable  bbox (w,d,h)       joint
+  P0   door_1_right   revolute   yes      1.50,1.63,0.28     axis +Y at (0.51,0.74,0.49)
+  P1   body           base       no       1.06,1.53,1.06     —
+
+Part ids (P0, P1, ...) match the labels used in every action. The FIRST message includes an
+annotated view where each fixable door is recoloured and labelled with its P# so you can see which
+door is which.
+
+WHAT YOU SEE
+Each observation gives two rendered views, both with all doors CLOSED (not text coordinates):
+  - the ORIGINAL broken object, identical every turn, and
+  - the result of the action you chose on the PREVIOUS turn.
+On the FIRST turn you have not acted yet, so you are shown the annotated part view and the broken
+object itself.
+A correctly repaired door seats flush against the body with no gap and no overlap; a broken one
+leaves a visible gap, interpenetrates the body or another door, or is mis-sized. Read the door's
+position, size and seating off these two images.
+
+FRAME AND UNITS
+Right-handed object frame; the axes X, Y, Z are the coordinate axes in the part table (centres and
+bounding boxes). Lengths in metres, rotations in degrees (right-hand rule).
+  TRANSLATE moves the whole part along an axis.
+  ROTATE turns the part in place about its own CENTROID, around the given axis.
+  SCALE resizes the part along an axis about its hinge-side edge.
+
+ACTION SPACE
+Emit exactly one action:
+  TRANSLATE(part, axis, value)   axis in {X,Y,Z}, value in metres,    any value in [-0.4, 0.4] m (continuous)
+  ROTATE(part, axis, value)      axis in {X,Y,Z}, value in degrees,   any value in [-60, 60] deg (continuous)
+  SCALE(part, axis, value)       axis in {X,Y,Z}, value a multiplier, any multiplier in [0.549, 1.822] (continuous)
+  NO_FIX()                       the object is already functional
+Only parts marked fixable=yes may be targeted.
+
+A repair is a single (type, part, axis, value) tuple - you may not compose two actions.
+
+TOLERANCE
+A repair passes if the faulty part is restored to within 1.5% of its size, the door still
+closes, and no parts interpenetrate.
+
+PROCEDURE
+On each turn output exactly one block:
+
+  <think>one or two sentences of reasoning</think>
+  <act>SIMULATE TRANSLATE(P1, Y, -0.04)</act>
+
+Each action is applied FRESH to the original broken object (attempts do not stack) - always issue
+the FULL correction, not a small increment. SIMULATE returns new rendered views. It does not commit.
+
+KEEP GOING until a SIMULATE reports ALL PASS - do not stop early. You have up to 10 SIMULATE calls;
+use them to search and refine. Only COMMIT a repair a SIMULATE has reported ALL PASS:
+
+  <act>COMMIT ROTATE(P2, Z, 6)</act>
+
+Never commit a repair you have seen fail or have not simulated. Only if your last SIMULATE is spent
+without solving it, commit your best attempt. Committing ends the episode and is scored. If a
+simulation convinces you an earlier line of reasoning was wrong, emit <backtrack/> before your next
+<act>. Output nothing outside these tags.
+
+The action is literal TEXT inside the <act> tags. It is NOT a tool call or a function call - do not
+emit it through any tool-use mechanism.
+
+
+===== USER =====
+SIMULATE result (ROTATE(P0, Z, -5.0000))
+
+(attached: the ORIGINAL BROKEN object CLOSED, then YOUR FIX applied to it CLOSED - compare before vs after. Parts colour-coded as in the labelled view; body grey)
+
+failed criteria: at least one part is not yet in its correct position
+SIMULATE calls remaining: 7. Keep simulating and refining until one returns ALL PASS; do not commit before then.
+
+Output your next action now (one <think> block and one <act> block). Write the action as literal
+TEXT inside the <act> tags - it is not a tool call or a function call.
+

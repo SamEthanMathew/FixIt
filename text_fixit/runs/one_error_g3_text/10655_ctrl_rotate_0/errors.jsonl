@@ -1,0 +1,2 @@
+{"episode": "10655_ctrl_rotate_0", "turn": 3, "kind": "api", "i": 0, "error": "empty reply", "finish_reason": "FinishReason.STOP"}
+{"episode": "10655_ctrl_rotate_0", "turn": 4, "kind": "api", "i": 0, "error": "empty reply", "finish_reason": "FinishReason.MALFORMED_RESPONSE"}

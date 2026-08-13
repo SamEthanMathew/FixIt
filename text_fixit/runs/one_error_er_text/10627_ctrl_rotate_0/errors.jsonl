@@ -1,0 +1,4 @@
+{"episode": "10627_ctrl_rotate_0", "turn": 4, "kind": "parse", "error": "missing SIMULATE or COMMIT", "raw": "An error occurred. Please try again."}
+{"episode": "10627_ctrl_rotate_0", "turn": 5, "kind": "api", "i": 0, "error": "empty reply", "finish_reason": "FinishReason.MALFORMED_RESPONSE"}
+{"episode": "10627_ctrl_rotate_0", "turn": 7, "kind": "api", "i": 0, "error": "empty reply", "finish_reason": "FinishReason.MALFORMED_RESPONSE"}
+{"episode": "10627_ctrl_rotate_0", "turn": 10, "kind": "api", "i": 0, "error": "empty reply", "finish_reason": "FinishReason.MALFORMED_RESPONSE"}

@@ -1,0 +1,33 @@
+# Hard-benchmark verification (TAU_FRAC=0.015)
+
+## std30  (30 instances)  ->  OK
+
+- distinct bases: 30/30 (unique: True)
+- levels: {'control_single': 30}
+- duplicate (base,link,type,axis,value) tuples: 0
+- scale axis spread: {1: 5, 0: 5}
+- invertibility passed: 30/30   max gt-fixed deviation: 0.000000 mm
+- necessity (leave-one-out residual >=3tau) passed: 30/30
+- off-grid passed: 30/30
+- [informational] sub-fault solo-vs-healthy >=3tau: 30/30
+- failures: none
+
+## part table hardening
+
+- reveal_fixable=False removes the fixable/role columns: True
+
+```
+reveal_fixable=True
+  id   label          role       fixable  bbox (w,d,h)       joint
+  P0   body           base       no       0.81,1.68,0.82     —
+  P1   door_1_right   revolute   yes      0.41,1.68,0.02     axis +Y at (0.39,0.83,0.37)
+  P2   door_2_left    revolute   yes      0.40,1.68,0.09     axis -Y at (-0.39,0.83,0.38)
+
+reveal_fixable=False
+  id   label          bbox (w,d,h)       joint
+  P0   body           0.81,1.68,0.82     —
+  P1   door_1_right   0.41,1.68,0.02     axis +Y at (0.39,0.83,0.37)
+  P2   door_2_left    0.40,1.68,0.09     axis -Y at (-0.39,0.83,0.38)
+```
+
+## RESULT: ALL CHECKS PASSED

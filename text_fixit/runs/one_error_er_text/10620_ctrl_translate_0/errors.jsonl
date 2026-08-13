@@ -1,0 +1,2 @@
+{"episode": "10620_ctrl_translate_0", "turn": 6, "kind": "api", "i": 0, "error": "empty reply", "finish_reason": "FinishReason.MALFORMED_FUNCTION_CALL"}
+{"episode": "10620_ctrl_translate_0", "turn": 6, "kind": "api", "i": 1, "error": "empty reply", "finish_reason": "FinishReason.MALFORMED_FUNCTION_CALL"}

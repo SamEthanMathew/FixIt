@@ -1,0 +1,5 @@
+{"episode": "10489_ctrl_scale_0", "turn": 3, "kind": "api", "i": 0, "error": "empty reply", "finish_reason": "FinishReason.MALFORMED_FUNCTION_CALL"}
+{"episode": "10489_ctrl_scale_0", "turn": 3, "kind": "api", "i": 1, "error": "empty reply", "finish_reason": "FinishReason.MALFORMED_FUNCTION_CALL"}
+{"episode": "10489_ctrl_scale_0", "turn": 3, "kind": "api", "i": 2, "error": "empty reply", "finish_reason": "FinishReason.MALFORMED_FUNCTION_CALL"}
+{"episode": "10489_ctrl_scale_0", "turn": 3, "kind": "api", "i": 3, "error": "empty reply", "finish_reason": "FinishReason.MALFORMED_FUNCTION_CALL"}
+{"episode": "10489_ctrl_scale_0", "turn": 5, "kind": "api", "i": 0, "error": "empty reply", "finish_reason": "FinishReason.MALFORMED_RESPONSE"}

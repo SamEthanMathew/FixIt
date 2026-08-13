@@ -1,0 +1,58 @@
+{
+  "agent": "loop_gemini_full",
+  "model": "gemini-robotics-er-2-preview",
+  "trial": 26,
+  "budget": 10,
+  "modality": "text",
+  "contract": "batch",
+  "max_actions": 1,
+  "tau_frac": 0.015,
+  "prompt_set": "one_error",
+  "instances_path": "/home/sammathew/Code/FixIt/text_fixit/data/instances_std30.jsonl",
+  "instance_ids": [
+    "10867_ctrl_scale_0"
+  ],
+  "n_instances": 1,
+  "show_deviation": false,
+  "history_mode": "full",
+  "temperature": 0.7,
+  "max_output_tokens": 32768,
+  "git_commit": "87f3970223c5731e3cf04aa362bb15c9d29f6fe1",
+  "versions": {
+    "python": "3.10.20",
+    "pybullet": "unknown",
+    "numpy": "1.26.4",
+    "PIL": "12.2.0",
+    "google.genai": "2.16.0"
+  },
+  "started_at": "2026-08-13T16:42:52-0400",
+  "instances_sha256": "10454927f3a1eef4afebcd7f53593fd10d20b3d1c0cd21ca92bb3e6ca3d77ae8",
+  "argv": [
+    "text_fixit/run_trials.py",
+    "--agent",
+    "loop_gemini_full",
+    "--model",
+    "gemini-robotics-er-2-preview",
+    "--instances",
+    "data/instances_std30.jsonl",
+    "--sweep",
+    "--run",
+    "one_error_er_text",
+    "--modality",
+    "text",
+    "--contract",
+    "batch",
+    "--max-actions",
+    "1",
+    "--budget",
+    "10",
+    "--deviation",
+    "off"
+  ],
+  "finished_at": "2026-08-13T16:43:29-0400",
+  "summary": {
+    "n": 1,
+    "solved": 0,
+    "seconds": 36.9
+  }
+}

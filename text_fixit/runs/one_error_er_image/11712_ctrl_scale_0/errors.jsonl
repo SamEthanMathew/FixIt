@@ -1,0 +1,6 @@
+{"episode": "11712_ctrl_scale_0", "turn": 5, "kind": "api", "i": 0, "error": "empty reply", "finish_reason": "FinishReason.MALFORMED_RESPONSE"}
+{"episode": "11712_ctrl_scale_0", "turn": 10, "kind": "api", "i": 0, "error": "empty reply", "finish_reason": "FinishReason.STOP"}
+{"episode": "11712_ctrl_scale_0", "turn": 10, "kind": "api", "i": 1, "error": "empty reply", "finish_reason": "FinishReason.MALFORMED_RESPONSE"}
+{"episode": "11712_ctrl_scale_0", "turn": 10, "kind": "api", "i": 2, "error": "empty reply", "finish_reason": "FinishReason.MALFORMED_RESPONSE"}
+{"episode": "11712_ctrl_scale_0", "turn": 10, "kind": "api", "i": 3, "error": "empty reply", "finish_reason": "FinishReason.MALFORMED_RESPONSE"}
+{"episode": "11712_ctrl_scale_0", "turn": 10, "kind": "api", "i": 4, "error": "empty reply", "finish_reason": "FinishReason.MALFORMED_RESPONSE"}

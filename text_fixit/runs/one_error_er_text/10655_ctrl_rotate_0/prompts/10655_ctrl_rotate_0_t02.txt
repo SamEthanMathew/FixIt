@@ -1,0 +1,95 @@
+===== SYSTEM =====
+You are repairing a malfunctioning articulated object in a physics simulator.
+
+OBJECT
+Category: Refrigerator          Instance: 10655_ctrl_rotate_0
+Intended function: Open and close the door: the door must swing to 90 degrees without colliding with the body or the other door, and must close flush.
+Success criteria: The faulty door is restored to its correct pose (within tolerance), the door still closes, and no parts interpenetrate.
+
+PARTS
+The object is decomposed into rigid parts. Exactly one part may be faulty.
+  id   label          role       fixable  bbox (w,d,h)       joint
+  P0   body           base       no       0.96,1.64,0.48     —
+  P1   door_1_right   revolute   yes      0.60,1.44,0.76     axis +Y at (0.50,0.81,0.21)
+  P2   door_2_left    revolute   yes      0.36,1.60,0.10     axis -Y at (-0.44,0.81,0.20)
+
+Part ids (P0, P1, ...) match the labels used in every action.
+
+WHAT YOU SEE
+Each observation gives the geometry as numbers (no images):
+  - the ORIGINAL broken object's per-part centre and size in each part's own axes, identical
+    every turn, and
+  - the result of the action you chose on the PREVIOUS turn, as per-part world centres with all
+    doors driven OPEN, then the same with all doors driven SHUT. On the FIRST turn you have not
+    acted yet, so this describes the broken object itself.
+Comparing the two tells you where the part sits now against where it started. The healthy target is
+never shown - you have to search for it.
+
+FRAME AND UNITS
+Right-handed object frame; the axes X, Y, Z are the coordinate axes in the part table (centres and
+bounding boxes). Lengths in metres, rotations in degrees (right-hand rule).
+  TRANSLATE moves the whole part along an axis.
+  ROTATE turns the part in place about its own CENTROID, around the given axis.
+  SCALE resizes the part along an axis about its hinge-side edge.
+
+ACTION SPACE
+Emit exactly one action:
+  TRANSLATE(part, axis, value)   axis in {X,Y,Z}, value in metres,    any value in [-0.4, 0.4] m (continuous)
+  ROTATE(part, axis, value)      axis in {X,Y,Z}, value in degrees,   any value in [-60, 60] deg (continuous)
+  SCALE(part, axis, value)       axis in {X,Y,Z}, value a multiplier, any multiplier in [0.549, 1.822] (continuous)
+  NO_FIX()                       the object is already functional
+Only parts marked fixable=yes may be targeted.
+
+A repair is a single (type, part, axis, value) tuple - you may not compose two actions.
+
+TOLERANCE
+A repair passes if the faulty part is restored to within 1.5% of its size, the door still
+closes, and no parts interpenetrate.
+
+PROCEDURE
+On each turn output exactly one block:
+
+  <think>one or two sentences of reasoning</think>
+  <act>SIMULATE TRANSLATE(P1, Y, -0.04)</act>
+
+Each action is applied FRESH to the original broken object (attempts do not stack) - always issue
+the FULL correction, not a small increment. SIMULATE returns the resulting part states plus the
+criteria that failed. It does not commit.
+
+KEEP GOING until a SIMULATE reports ALL PASS - do not stop early. You have up to 10 SIMULATE calls;
+use them to search and refine. Only COMMIT a repair a SIMULATE has reported ALL PASS:
+
+  <act>COMMIT ROTATE(P2, Z, 6)</act>
+
+Never commit a repair you have seen fail or have not simulated. Only if your last SIMULATE is spent
+without solving it, commit your best attempt. Committing ends the episode and is scored. If a
+simulation convinces you an earlier line of reasoning was wrong, emit <backtrack/> before your next
+<act>. Output nothing outside these tags.
+
+The action is literal TEXT inside the <act> tags. It is NOT a tool call or a function call - do not
+emit it through any tool-use mechanism.
+
+
+===== USER =====
+SIMULATE result (ROTATE(P1, Y, 40.0000))
+
+original broken (reference) - part geometry [centre; size] in each part's X,Y,Z:
+  P0 body           centre=[-0.021,-0.252,-0.012] size=[0.962,1.644,0.481]
+  P1 door_1_right   centre=[-0.346,-0.787,0.027] size=[0.601,1.443,0.758]
+  P2 door_2_left    centre=[0.140,-0.765,0.028] size=[0.361,1.604,0.104]
+
+your attempt - world centres at the START of activation (doors open):
+  P0 body           centre=[0.012,0.021,-0.252]
+  P1 door_1_right   centre=[-0.557,-0.524,0.024]
+  P2 door_2_left    centre=[-0.335,0.471,0.046]
+your attempt - world centres at the END of activation (doors shut):
+  P0 body           centre=[0.012,0.021,-0.252]
+  P1 door_1_right   centre=[-0.238,-0.150,0.024]
+  P2 door_2_left    centre=[-0.223,0.304,0.046]
+
+failed criteria: a door does not close (jams at 44 deg); part collision (('door_1_right', 'door_2_left'), 75 mm over healthy)
+SIMULATE calls remaining: 9. Keep simulating and refining until one returns ALL PASS; do not commit before then.
+
+Output your next action now (one <think> block and one <act> block). Write the action as literal
+TEXT inside the <act> tags - it is not a tool call or a function call.
+

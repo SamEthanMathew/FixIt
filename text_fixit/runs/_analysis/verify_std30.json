@@ -1,0 +1,1196 @@
+{
+  "tau_frac": 0.015,
+  "sets": {
+    "std30": {
+      "diversity": {
+        "n": 30,
+        "distinct_bases": 30,
+        "bases_unique": true,
+        "duplicate_fault_tuples": 0,
+        "scale_axis_counts": {
+          "1": 5,
+          "0": 5
+        },
+        "levels": {
+          "control_single": 30
+        }
+      },
+      "failures": [],
+      "per_instance": [
+        {
+          "id": "10036_ctrl_translate_0",
+          "base": "10036",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 25.888,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_1": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "translate",
+                "part": "door_1_right",
+                "deviation_mm": 198.47,
+                "tau_mm": 25.89,
+                "ratio": 7.67
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "11178_ctrl_translate_0",
+          "base": "11178",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 24.844,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_1": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "translate",
+                "part": "door_2_right",
+                "deviation_mm": 145.47,
+                "tau_mm": 24.84,
+                "ratio": 5.86
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "10849_ctrl_translate_0",
+          "base": "10849",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 25.077,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_0": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "translate",
+                "part": "door_1_right",
+                "deviation_mm": 85.17,
+                "tau_mm": 25.08,
+                "ratio": 3.4
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "11231_ctrl_translate_0",
+          "base": "11231",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 22.767,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_1": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "translate",
+                "part": "door_1_right",
+                "deviation_mm": 188.06,
+                "tau_mm": 22.77,
+                "ratio": 8.26
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "11299_ctrl_translate_0",
+          "base": "11299",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 24.734,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_1": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "translate",
+                "part": "door_1_left",
+                "deviation_mm": 128.26,
+                "tau_mm": 24.73,
+                "ratio": 5.19
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "10905_ctrl_translate_0",
+          "base": "10905",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 17.352,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_0": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "translate",
+                "part": "door_1_right",
+                "deviation_mm": 178.37,
+                "tau_mm": 17.35,
+                "ratio": 10.28
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "12249_ctrl_translate_0",
+          "base": "12249",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 24.776,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_0": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "translate",
+                "part": "door_1_right",
+                "deviation_mm": 175.2,
+                "tau_mm": 24.78,
+                "ratio": 7.07
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "12055_ctrl_translate_0",
+          "base": "12055",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 27.685,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_0": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "translate",
+                "part": "door_1_left",
+                "deviation_mm": 87.77,
+                "tau_mm": 27.69,
+                "ratio": 3.17
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "10620_ctrl_translate_0",
+          "base": "10620",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 25.805,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_2": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "translate",
+                "part": "door_2_left",
+                "deviation_mm": 82.16,
+                "tau_mm": 25.81,
+                "ratio": 3.18
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "10586_ctrl_translate_0",
+          "base": "10586",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 23.157,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_2": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "translate",
+                "part": "door_2_left",
+                "deviation_mm": 141.91,
+                "tau_mm": 23.16,
+                "ratio": 6.13
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "10655_ctrl_rotate_0",
+          "base": "10655",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 25.708,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_1": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "rotate",
+                "part": "door_1_right",
+                "deviation_mm": 363.55,
+                "tau_mm": 25.71,
+                "ratio": 14.14
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "10797_ctrl_rotate_0",
+          "base": "10797",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 26.087,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_1": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "rotate",
+                "part": "door_1_right",
+                "deviation_mm": 145.59,
+                "tau_mm": 26.09,
+                "ratio": 5.58
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "12252_ctrl_rotate_0",
+          "base": "12252",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 26.016,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_0": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "rotate",
+                "part": "door_1_right",
+                "deviation_mm": 260.58,
+                "tau_mm": 26.02,
+                "ratio": 10.02
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "10143_ctrl_rotate_0",
+          "base": "10143",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 14.647,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_2": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "rotate",
+                "part": "door_2_right",
+                "deviation_mm": 47.9,
+                "tau_mm": 14.65,
+                "ratio": 3.27
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "12050_ctrl_rotate_0",
+          "base": "12050",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 11.933,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_0": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "rotate",
+                "part": "door_1_right",
+                "deviation_mm": 45.29,
+                "tau_mm": 11.93,
+                "ratio": 3.8
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "11304_ctrl_rotate_0",
+          "base": "11304",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 21.338,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_0": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "rotate",
+                "part": "door_1_right",
+                "deviation_mm": 127.82,
+                "tau_mm": 21.34,
+                "ratio": 5.99
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "10627_ctrl_rotate_0",
+          "base": "10627",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 14.485,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_2": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "rotate",
+                "part": "door_2_right",
+                "deviation_mm": 170.39,
+                "tau_mm": 14.49,
+                "ratio": 11.76
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "10373_ctrl_rotate_0",
+          "base": "10373",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 20.813,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_0": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "rotate",
+                "part": "door_1_right",
+                "deviation_mm": 167.49,
+                "tau_mm": 20.81,
+                "ratio": 8.05
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "11211_ctrl_rotate_0",
+          "base": "11211",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 25.205,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_0": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "rotate",
+                "part": "door_1_right",
+                "deviation_mm": 216.25,
+                "tau_mm": 25.21,
+                "ratio": 8.58
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "12042_ctrl_rotate_0",
+          "base": "12042",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 29.072,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_1": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "rotate",
+                "part": "door_1_left",
+                "deviation_mm": 119.84,
+                "tau_mm": 29.07,
+                "ratio": 4.12
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "10489_ctrl_scale_0",
+          "base": "10489",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 20.17,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_2": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "scale",
+                "part": "door_2_right",
+                "deviation_mm": 282.31,
+                "tau_mm": 20.17,
+                "ratio": 14.0
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "12248_ctrl_scale_0",
+          "base": "12248",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 13.874,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_0": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "scale",
+                "part": "door_1_right",
+                "deviation_mm": 159.85,
+                "tau_mm": 13.87,
+                "ratio": 11.52
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "10612_ctrl_scale_0",
+          "base": "10612",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 24.856,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_2": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "scale",
+                "part": "door_2_left",
+                "deviation_mm": 168.14,
+                "tau_mm": 24.86,
+                "ratio": 6.76
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "10944_ctrl_scale_0",
+          "base": "10944",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 23.886,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_0": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "scale",
+                "part": "door_1_right",
+                "deviation_mm": 341.47,
+                "tau_mm": 23.89,
+                "ratio": 14.3
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "10685_ctrl_scale_0",
+          "base": "10685",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 25.759,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_2": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "scale",
+                "part": "door_2_left",
+                "deviation_mm": 78.1,
+                "tau_mm": 25.76,
+                "ratio": 3.03
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "10867_ctrl_scale_0",
+          "base": "10867",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 24.081,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_0": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "scale",
+                "part": "door_1_right",
+                "deviation_mm": 162.0,
+                "tau_mm": 24.08,
+                "ratio": 6.73
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "10638_ctrl_scale_0",
+          "base": "10638",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 22.465,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_1": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "scale",
+                "part": "door_1_right",
+                "deviation_mm": 331.18,
+                "tau_mm": 22.46,
+                "ratio": 14.74
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "12250_ctrl_scale_0",
+          "base": "12250",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 29.066,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_1": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "scale",
+                "part": "door_1_left",
+                "deviation_mm": 190.88,
+                "tau_mm": 29.07,
+                "ratio": 6.57
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "11712_ctrl_scale_0",
+          "base": "11712",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 22.533,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_1": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "scale",
+                "part": "door_2_right",
+                "deviation_mm": 189.13,
+                "tau_mm": 22.53,
+                "ratio": 8.39
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        },
+        {
+          "id": "12054_ctrl_scale_0",
+          "base": "12054",
+          "level": "control_single",
+          "n_faults": 1,
+          "invertibility": {
+            "pass": true,
+            "gt_fixed_deviation_mm": 0.0,
+            "tau_mm": 29.219,
+            "contract_pass": true,
+            "per_part_deviation_mm": {
+              "link_0": 0.0
+            }
+          },
+          "necessity": {
+            "pass": true,
+            "note": "single fault - not applicable",
+            "subsets": []
+          },
+          "offgrid": {
+            "pass": true,
+            "on_grid_values": []
+          },
+          "sub_magnitudes": {
+            "pass": true,
+            "solo": [
+              {
+                "index": 0,
+                "type": "scale",
+                "part": "door_1_right",
+                "deviation_mm": 208.58,
+                "tau_mm": 29.22,
+                "ratio": 7.14
+              }
+            ]
+          },
+          "tau_frac_ok": true,
+          "all_pass": true
+        }
+      ],
+      "ok": true
+    }
+  },
+  "part_table_hidden_ok": true,
+  "ok": true
+}

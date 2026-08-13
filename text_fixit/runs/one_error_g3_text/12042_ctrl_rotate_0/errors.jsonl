@@ -1,0 +1,4 @@
+{"episode": "12042_ctrl_rotate_0", "turn": 4, "kind": "api", "i": 0, "error": "empty reply", "finish_reason": "FinishReason.STOP"}
+{"episode": "12042_ctrl_rotate_0", "turn": 4, "kind": "api", "i": 1, "error": "empty reply", "finish_reason": "FinishReason.STOP"}
+{"episode": "12042_ctrl_rotate_0", "turn": 4, "kind": "api", "i": 2, "error": "empty reply", "finish_reason": "FinishReason.MALFORMED_FUNCTION_CALL"}
+{"episode": "12042_ctrl_rotate_0", "turn": 4, "kind": "api", "i": 3, "error": "empty reply", "finish_reason": "FinishReason.STOP"}
