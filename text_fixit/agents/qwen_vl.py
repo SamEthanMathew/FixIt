@@ -114,6 +114,15 @@ class QwenVLAgent(GeminiAgent):
                 out.append({"role": role, "content": m["text"]})
         return out
 
+    def _single_turn(self, text, images):
+        """OpenAI-format single user turn with images (see GeminiAgent._single_turn)."""
+        if not images:
+            return text
+        return [{"role": "user",
+                 "content": [{"type": "text", "text": text}] +
+                            [{"type": "image_url", "image_url": {"url": _data_url(im)}}
+                             for im in images]}]
+
     def _call(self, contents, system, retries=3):
         """contents is either the OpenAI message list (history='full') or a single step string
         (window3 / oneshot), matching how GeminiAgent's two _generate paths call in.

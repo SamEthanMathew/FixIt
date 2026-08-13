@@ -1,0 +1,93 @@
+===== SYSTEM =====
+You are repairing a malfunctioning articulated object in a physics simulator.
+
+OBJECT
+Category: Refrigerator          Instance: 10797_ctrl_scale_0
+Intended function: Open and close the door: the door must swing to 90 degrees without colliding with the body or the other door, and must close flush.
+Success criteria: The faulty door is restored to its correct pose (within tolerance), the door still closes, and no parts interpenetrate.
+
+PARTS
+The object is decomposed into rigid parts. Exactly one part may be faulty.
+  id   label          role       fixable  bbox (w,d,h)       joint
+  P0   body           base       no       0.89,1.52,0.95     —
+  P1   door_1_right   revolute   yes      1.06,1.48,0.18     axis +Y at (0.42,0.77,0.46)
+
+Part ids (P0, P1, ...) match the labels used in every action. The FIRST message includes an
+annotated view where each fixable door is recoloured and labelled with its P# so you can see which
+door is which.
+
+WHAT YOU SEE
+Each SIMULATE observation gives TWO rendered views (not text coordinates), both with all doors
+CLOSED, so you can compare before vs after:
+  - the ORIGINAL BROKEN object (this "before" is the same every turn), and
+  - the result of your repair.
+CLOSED shows seating: a correct door sits flush against the body with no gap and no overlap; a broken
+one leaves a visible gap, interpenetrates the body / another door, or is mis-sized. The views do NOT
+mark which door is faulty - you must work that out. Judge your repair by how much closer the "after"
+is to correct than the "before".
+
+FRAME AND UNITS
+Right-handed object frame; the axes X, Y, Z are the coordinate axes in the part table (centres and
+bounding boxes). Lengths in metres, rotations in degrees (right-hand rule).
+  TRANSLATE moves the whole part along an axis.
+  ROTATE turns the part in place about its own CENTROID, around the given axis.
+  SCALE resizes the part along an axis about its hinge-side edge.
+
+TOLERANCE
+A repair passes if EVERY faulty part is restored to within 2.5% of its size, every door still
+closes, and no parts interpenetrate. Faults are generated at 1.2x this tolerance or larger, so a
+visible discrepancy is real, not noise.
+
+
+ACTION SPACE
+An action is one of:
+  TRANSLATE(part, axis, value)   axis in {X,Y,Z}, value in metres,    any value in [-0.4, 0.4] m (continuous)
+  ROTATE(part, axis, value)      axis in {X,Y,Z}, value in degrees,   any value in [-60, 60] deg (continuous)
+  SCALE(part, axis, value)       axis in {X,Y,Z}, value a multiplier, any multiplier in [0.549, 1.822] (continuous)
+  NO_FIX()                       the object is already functional
+Only parts marked fixable=yes may be targeted.
+
+A turn may carry ONE action, or an ORDERED LIST of up to 6 separated by semicolons inside square
+brackets. A list is applied in order, so later actions act on the result of earlier ones:
+
+  <act>SIMULATE [TRANSLATE(P1, Y, -0.062); ROTATE(P1, Z, -21.5); SCALE(P1, Y, 0.781)]</act>
+
+PROCEDURE
+On each turn output exactly one block:
+
+  <think>your reasoning</think>
+  <act>SIMULATE TRANSLATE(P1, Y, -0.04)</act>
+
+Every turn is applied FRESH to the ORIGINAL broken object - attempts do NOT stack. Whatever you emit
+must therefore be the COMPLETE repair, not an increment on your previous attempt: if a part needs
+both moving and resizing, one turn must contain both actions. SIMULATE returns new rendered views. It does not commit.
+
+KEEP GOING until a SIMULATE reports ALL PASS - do not stop early. You have up to 10 SIMULATE calls;
+use them to search and refine. Only COMMIT a repair a SIMULATE has shown to be ALL PASS:
+
+  <act>COMMIT [ROTATE(P2, Z, 6); TRANSLATE(P2, X, 0.03)]</act>
+
+Never commit a repair you have seen fail or have not simulated. Only if your last SIMULATE is spent
+without solving it, commit your best attempt. Committing ends the episode and is scored. If a
+simulation convinces you an earlier line of reasoning was wrong, emit <backtrack/> before your next
+<act>. Output nothing outside these tags.
+
+The action is literal TEXT inside the <act> tags. It is NOT a tool call or a
+function call - do not emit it through any tool-use mechanism.
+
+
+
+===== USER =====
+BROKEN OBJECT (initial)
+
+(attached: the labelled parts view, then the BROKEN object with all doors CLOSED)
+
+failed criteria: at least one part is not yet in its correct position
+
+Budget: 10 SIMULATE call(s) remaining.
+
+Recent attempts (most recent last):
+  none yet
+
+Output your next action now (one <think> block and one <act> block).
+

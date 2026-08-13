@@ -124,7 +124,11 @@ def run_episode(env, agent, instance, prompts=None, verbose=False, logger=None):
                 "per_part": {k: {"deviation_mm": v["deviation_mm"], "within_tol": v["within_tol"],
                                  "closes": v["closes"]}
                              for k, v in (ev.get("per_part") or {}).items()},
+                # image_paths = what the ENVIRONMENT rendered; images_sent = what actually went
+                # into the model request. They diverged silently before the transport fix.
                 "image_paths": logger.images(instance["id"], turns, images_sent),
+                "n_images_rendered": len(images_sent),
+                "images_sent_to_model": meta.get("images_sent"),
                 "latency_s": meta.get("latency_s"), "usage": meta.get("usage"),
                 "finish_reason": meta.get("finish_reason"), "attempts": meta.get("attempts"),
             }

@@ -1,0 +1,118 @@
+{
+  "id": "12042_ctrl_rotate_0",
+  "base": "12042",
+  "agent": "loop_qwen",
+  "contract": "batch",
+  "hard": false,
+  "state_modality": "image",
+  "show_deviation": false,
+  "level": "control_single",
+  "n_faults": 1,
+  "fault_types": [
+    "rotate"
+  ],
+  "faulty_links": [
+    "link_1"
+  ],
+  "corruption_type": "rotate",
+  "gt_fix_actions": "ROTATE(P1, Z, -18.6877)",
+  "terminal_pass": true,
+  "terminal_score": 0.5625,
+  "terminal_deviation_mm": 27.878,
+  "terminal_per_part": {
+    "link_1": {
+      "deviation_mm": 27.878,
+      "within_tol": true,
+      "closes": true
+    }
+  },
+  "initial_deviation_mm": 59.759,
+  "terminal_mode": "COMMIT",
+  "committed": true,
+  "n_simulate": 6,
+  "n_invalid": 0,
+  "n_reset": 0,
+  "n_repeated": 0,
+  "n_api_giveup": 0,
+  "first_sim_score": 0.179,
+  "first_sim_pass": false,
+  "history": [
+    {
+      "mode": "SIMULATE",
+      "action": "TRANSLATE(P1, Y, -0.04000)",
+      "think": "",
+      "backtrack": false,
+      "n_actions": 1,
+      "state_specs": 1,
+      "pass": false,
+      "score": 0.179,
+      "deviation_mm": 83.4
+    },
+    {
+      "mode": "SIMULATE",
+      "action": "TRANSLATE(P1, Y, -0.08000)",
+      "think": "",
+      "backtrack": false,
+      "n_actions": 1,
+      "state_specs": 1,
+      "pass": false,
+      "score": 0.0936,
+      "deviation_mm": 114.8
+    },
+    {
+      "mode": "SIMULATE",
+      "action": "TRANSLATE(P1, Y, -0.12000)",
+      "think": "",
+      "backtrack": false,
+      "n_actions": 1,
+      "state_specs": 1,
+      "pass": false,
+      "score": 0.0466,
+      "deviation_mm": 148.6
+    },
+    {
+      "mode": "SIMULATE",
+      "action": "TRANSLATE(P1, Y, -0.16000)",
+      "think": "",
+      "backtrack": false,
+      "n_actions": 1,
+      "state_specs": 1,
+      "pass": false,
+      "score": 0.0226,
+      "deviation_mm": 183.7
+    },
+    {
+      "mode": "SIMULATE",
+      "action": "TRANSLATE(P1, Y, -0.20000)",
+      "think": "",
+      "backtrack": false,
+      "n_actions": 1,
+      "state_specs": 1,
+      "pass": false,
+      "score": 0.0107,
+      "deviation_mm": 220.0
+    },
+    {
+      "mode": "SIMULATE",
+      "action": "ROTATE(P1, Z, -10.0000)",
+      "think": "",
+      "backtrack": true,
+      "n_actions": 1,
+      "state_specs": 1,
+      "pass": true,
+      "score": 0.5625,
+      "deviation_mm": 27.9
+    },
+    {
+      "mode": "COMMIT",
+      "action": "ROTATE(P1, Z, -10.0000)",
+      "think": "",
+      "backtrack": false,
+      "n_actions": 1,
+      "state_specs": 1,
+      "pass": true,
+      "score": 0.5625,
+      "deviation_mm": 27.9
+    }
+  ]
+}

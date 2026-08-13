@@ -1,0 +1,542 @@
+[
+  {
+    "label": "qw32_2fault",
+    "n": 30,
+    "solved": 0,
+    "success_rate": 0.0,
+    "tries_all": {
+      "n": 30,
+      "min": 10,
+      "max": 10,
+      "median": 10.0,
+      "mean": 10.0
+    },
+    "tries_solved": null,
+    "mean_score": 0.0028,
+    "committed_rate": 1.0,
+    "invalid_actions": 0,
+    "resets": 0,
+    "api_giveup_episodes": 0,
+    "by": {
+      "corruption_type": {
+        "composite": {
+          "n": 30,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 30,
+            "min": 10,
+            "max": 10,
+            "median": 10.0,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        }
+      },
+      "level": {
+        "2fault_1door": {
+          "n": 15,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 15,
+            "min": 10,
+            "max": 10,
+            "median": 10,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        },
+        "2fault_2door": {
+          "n": 15,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 15,
+            "min": 10,
+            "max": 10,
+            "median": 10,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        }
+      },
+      "fault_pair": {
+        "rotate+scale": {
+          "n": 10,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 10,
+            "min": 10,
+            "max": 10,
+            "median": 10.0,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        },
+        "rotate+translate": {
+          "n": 10,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 10,
+            "min": 10,
+            "max": 10,
+            "median": 10.0,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        },
+        "scale+translate": {
+          "n": 10,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 10,
+            "min": 10,
+            "max": 10,
+            "median": 10.0,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        }
+      }
+    },
+    "parts_within_tol": 0.0167,
+    "deviation_closed": -0.0495,
+    "made_worse_rate": 0.6333,
+    "ever_simulated_a_pass": 0.0,
+    "tau_sweep": {
+      "1.0x": 0.0,
+      "1.667x": 0.0,
+      "2.0x": 0.0,
+      "3.0x": 0.0
+    },
+    "tau_sweep_n": 30
+  },
+  {
+    "label": "qw32_composite",
+    "n": 25,
+    "solved": 0,
+    "success_rate": 0.0,
+    "tries_all": {
+      "n": 25,
+      "min": 10,
+      "max": 10,
+      "median": 10,
+      "mean": 10.0
+    },
+    "tries_solved": null,
+    "mean_score": 0.0001,
+    "committed_rate": 1.0,
+    "invalid_actions": 0,
+    "resets": 0,
+    "api_giveup_episodes": 0,
+    "by": {
+      "corruption_type": {
+        "composite": {
+          "n": 25,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 25,
+            "min": 10,
+            "max": 10,
+            "median": 10,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        }
+      },
+      "level": {
+        "composite_1door": {
+          "n": 10,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 10,
+            "min": 10,
+            "max": 10,
+            "median": 10.0,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        },
+        "composite_2door": {
+          "n": 15,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 15,
+            "min": 10,
+            "max": 10,
+            "median": 10,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        }
+      }
+    },
+    "parts_within_tol": 0.0,
+    "deviation_closed": 0.0588,
+    "made_worse_rate": 0.36,
+    "ever_simulated_a_pass": 0.0,
+    "tau_sweep": {
+      "1.0x": 0.0,
+      "1.667x": 0.0,
+      "2.0x": 0.0,
+      "3.0x": 0.0
+    },
+    "tau_sweep_n": 25
+  },
+  {
+    "label": "qw32_ctrl",
+    "n": 25,
+    "solved": 0,
+    "success_rate": 0.0,
+    "tries_all": {
+      "n": 25,
+      "min": 10,
+      "max": 10,
+      "median": 10,
+      "mean": 10.0
+    },
+    "tries_solved": null,
+    "mean_score": 0.0393,
+    "committed_rate": 0.96,
+    "invalid_actions": 0,
+    "resets": 0,
+    "api_giveup_episodes": 0,
+    "by": {
+      "corruption_type": {
+        "rotate": {
+          "n": 8,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 8,
+            "min": 10,
+            "max": 10,
+            "median": 10.0,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        },
+        "scale": {
+          "n": 8,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 8,
+            "min": 10,
+            "max": 10,
+            "median": 10.0,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        },
+        "translate": {
+          "n": 9,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 9,
+            "min": 10,
+            "max": 10,
+            "median": 10,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        }
+      }
+    },
+    "parts_within_tol": 0.0,
+    "deviation_closed": -0.1237,
+    "made_worse_rate": 0.6,
+    "ever_simulated_a_pass": 0.0,
+    "tau_sweep": {
+      "1.0x": 0.0,
+      "1.667x": 0.04,
+      "2.0x": 0.04,
+      "3.0x": 0.24
+    },
+    "tau_sweep_n": 25
+  },
+  {
+    "label": "qw8_2fault",
+    "n": 30,
+    "solved": 0,
+    "success_rate": 0.0,
+    "tries_all": {
+      "n": 30,
+      "min": 10,
+      "max": 10,
+      "median": 10.0,
+      "mean": 10.0
+    },
+    "tries_solved": null,
+    "mean_score": 0.0018,
+    "committed_rate": 1.0,
+    "invalid_actions": 0,
+    "resets": 0,
+    "api_giveup_episodes": 0,
+    "by": {
+      "corruption_type": {
+        "composite": {
+          "n": 30,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 30,
+            "min": 10,
+            "max": 10,
+            "median": 10.0,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        }
+      },
+      "level": {
+        "2fault_1door": {
+          "n": 15,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 15,
+            "min": 10,
+            "max": 10,
+            "median": 10,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        },
+        "2fault_2door": {
+          "n": 15,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 15,
+            "min": 10,
+            "max": 10,
+            "median": 10,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        }
+      },
+      "fault_pair": {
+        "rotate+scale": {
+          "n": 10,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 10,
+            "min": 10,
+            "max": 10,
+            "median": 10.0,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        },
+        "rotate+translate": {
+          "n": 10,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 10,
+            "min": 10,
+            "max": 10,
+            "median": 10.0,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        },
+        "scale+translate": {
+          "n": 10,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 10,
+            "min": 10,
+            "max": 10,
+            "median": 10.0,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        }
+      }
+    },
+    "parts_within_tol": 0.0,
+    "deviation_closed": -0.208,
+    "made_worse_rate": 0.6,
+    "ever_simulated_a_pass": 0.0,
+    "tau_sweep": {
+      "1.0x": 0.0,
+      "1.667x": 0.0,
+      "2.0x": 0.0,
+      "3.0x": 0.0
+    },
+    "tau_sweep_n": 30
+  },
+  {
+    "label": "qw8_composite",
+    "n": 25,
+    "solved": 0,
+    "success_rate": 0.0,
+    "tries_all": {
+      "n": 25,
+      "min": 10,
+      "max": 10,
+      "median": 10,
+      "mean": 10.0
+    },
+    "tries_solved": null,
+    "mean_score": 0.0001,
+    "committed_rate": 1.0,
+    "invalid_actions": 0,
+    "resets": 0,
+    "api_giveup_episodes": 0,
+    "by": {
+      "corruption_type": {
+        "composite": {
+          "n": 25,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 25,
+            "min": 10,
+            "max": 10,
+            "median": 10,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        }
+      },
+      "level": {
+        "composite_1door": {
+          "n": 10,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 10,
+            "min": 10,
+            "max": 10,
+            "median": 10.0,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        },
+        "composite_2door": {
+          "n": 15,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 15,
+            "min": 10,
+            "max": 10,
+            "median": 10,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        }
+      }
+    },
+    "parts_within_tol": 0.0,
+    "deviation_closed": -0.2061,
+    "made_worse_rate": 0.6,
+    "ever_simulated_a_pass": 0.0,
+    "tau_sweep": {
+      "1.0x": 0.0,
+      "1.667x": 0.0,
+      "2.0x": 0.0,
+      "3.0x": 0.0
+    },
+    "tau_sweep_n": 25
+  },
+  {
+    "label": "qw8_ctrl",
+    "n": 25,
+    "solved": 1,
+    "success_rate": 0.04,
+    "tries_all": {
+      "n": 25,
+      "min": 5,
+      "max": 10,
+      "median": 10,
+      "mean": 9.8
+    },
+    "tries_solved": {
+      "n": 1,
+      "min": 5,
+      "max": 5,
+      "median": 5,
+      "mean": 5.0
+    },
+    "mean_score": 0.0506,
+    "committed_rate": 1.0,
+    "invalid_actions": 0,
+    "resets": 0,
+    "api_giveup_episodes": 0,
+    "by": {
+      "corruption_type": {
+        "rotate": {
+          "n": 8,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 8,
+            "min": 10,
+            "max": 10,
+            "median": 10.0,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        },
+        "scale": {
+          "n": 8,
+          "solved": 0,
+          "success_rate": 0.0,
+          "tries_all": {
+            "n": 8,
+            "min": 10,
+            "max": 10,
+            "median": 10.0,
+            "mean": 10.0
+          },
+          "tries_solved": null
+        },
+        "translate": {
+          "n": 9,
+          "solved": 1,
+          "success_rate": 0.1111,
+          "tries_all": {
+            "n": 9,
+            "min": 5,
+            "max": 10,
+            "median": 10,
+            "mean": 9.44
+          },
+          "tries_solved": {
+            "n": 1,
+            "min": 5,
+            "max": 5,
+            "median": 5,
+            "mean": 5.0
+          }
+        }
+      }
+    },
+    "parts_within_tol": 0.04,
+    "deviation_closed": -0.4761,
+    "made_worse_rate": 0.6,
+    "ever_simulated_a_pass": 0.04,
+    "tau_sweep": {
+      "1.0x": 0.04,
+      "1.667x": 0.04,
+      "2.0x": 0.04,
+      "3.0x": 0.2
+    },
+    "tau_sweep_n": 25
+  }
+]

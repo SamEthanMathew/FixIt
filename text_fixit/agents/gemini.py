@@ -254,8 +254,14 @@ class GeminiAgent(Agent):
         if ctx.get("retry_error"):
             step += (f"\n\nYour previous output was invalid: {ctx['retry_error']}. "
                      "Re-emit exactly one <think> and one <act> block with a valid action.")
-        self.last_prompt = {"system": system, "user": step, "transcript_turns": 1}
-        raw = self._generate(system, step)
+        imgs = list(obs.get("images", []))
+        self.last_prompt = {"system": system, "user": step, "transcript_turns": 1,
+                            "n_images": len(imgs)}
+        raw = self._generate(system, step, images=imgs)
+        # What the MODEL received, as distinct from what the environment rendered. run_episode
+        # logs the latter (image_paths); without this there is no evidence the two agree.
+        if isinstance(self.last_meta, dict):
+            self.last_meta["images_sent"] = len(imgs)
         if self.oneshot:                       # force a single commit, no matter what it emitted
             raw = re.sub(r"\bSIMULATE\b", "COMMIT", raw, flags=re.IGNORECASE)
         self.last_raw = raw
@@ -366,6 +372,21 @@ class GeminiAgent(Agent):
     def _generate_messages(self, system):
         return self._call(self._to_contents(), system)
 
-    def _generate(self, system, step, retries=3):
+    def _single_turn(self, text, images):
+        """One stateless user turn WITH its images attached.
+
+        The window3 and oneshot paths used to pass the step text alone, so in image modality the
+        model was told "(attached: the ORIGINAL BROKEN object ... )" and received no pixels at all.
+        Every image-modality run on those paths was effectively blind. Returns provider-native
+        content; a bare string when there is nothing to attach, so the text path is unchanged.
+        """
+        if not images:
+            return text
+        from google.genai import types
+        return ([types.Part.from_text(text=text)] +
+                [types.Part.from_bytes(data=_png_bytes(im), mime_type="image/png")
+                 for im in images])
+
+    def _generate(self, system, step, images=None, retries=3):
         # single-message (window3 / oneshot) call; on failure returns a parseable fallback.
-        return self._call(step, system, retries=retries)
+        return self._call(self._single_turn(step, images), system, retries=retries)
