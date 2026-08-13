@@ -112,6 +112,7 @@ def run_agent(agent_name, instances, run_dir, budget, modality, deviation, seed,
                     instance_ids=[i["id"] for i in instances],
                     temperature=getattr(agent, "temperature", None),
                     history_mode=getattr(agent, "history", None),
+                    prompt_set=getattr(agent, "prompt_set", None),
                     thinking=getattr(agent, "thinking", None),
                     thinking_budget=getattr(agent, "thinking_budget", None),
                     max_output_tokens=getattr(agent, "max_tokens", None))

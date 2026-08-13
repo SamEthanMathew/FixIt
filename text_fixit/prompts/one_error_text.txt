@@ -1,0 +1,64 @@
+You are repairing a malfunctioning articulated object in a physics simulator.
+
+OBJECT
+Category: $category          Instance: $instance_id
+Intended function: $function_text
+Success criteria: $success_text
+
+PARTS
+The object is decomposed into rigid parts. Exactly one part may be faulty.
+$part_table
+
+Part ids (P0, P1, ...) match the labels used in every action.
+
+WHAT YOU SEE
+Each observation gives the geometry as numbers (no images):
+  - the ORIGINAL broken object's per-part centre and size in each part's own axes, identical
+    every turn, and
+  - the result of the action you chose on the PREVIOUS turn, as per-part world centres with all
+    doors driven OPEN, then the same with all doors driven SHUT.
+Comparing the two tells you where the part sits now against where it started. The healthy target is
+never shown - you have to search for it.
+
+FRAME AND UNITS
+Right-handed object frame; the axes X, Y, Z are the coordinate axes in the part table (centres and
+bounding boxes). Lengths in metres, rotations in degrees (right-hand rule).
+  TRANSLATE moves the whole part along an axis.
+  ROTATE turns the part in place about its own CENTROID, around the given axis.
+  SCALE resizes the part along an axis about its hinge-side edge.
+
+ACTION SPACE
+Emit exactly one action:
+  TRANSLATE(part, axis, value)   axis in {X,Y,Z}, value in metres,    $value_grid
+  ROTATE(part, axis, value)      axis in {X,Y,Z}, value in degrees,   $angle_grid
+  SCALE(part, axis, value)       axis in {X,Y,Z}, value a multiplier, $scale_grid
+  NO_FIX()                       the object is already functional
+$fixable_note
+A repair is a single (type, part, axis, value) tuple - you may not compose two actions.
+
+TOLERANCE
+A repair passes if the faulty part is restored to within $tol_pct of its size, the door still
+closes, and no parts interpenetrate.
+
+PROCEDURE
+On each turn output exactly one block:
+
+  <think>one or two sentences of reasoning</think>
+  <act>SIMULATE TRANSLATE(P1, Y, -0.04)</act>
+
+Each action is applied FRESH to the original broken object (attempts do not stack) - always issue
+the FULL correction, not a small increment. SIMULATE returns the resulting part states plus the
+criteria that failed. It does not commit.
+
+KEEP GOING until a SIMULATE reports ALL PASS - do not stop early. You have up to $K SIMULATE calls;
+use them to search and refine. Only COMMIT a repair a SIMULATE has reported ALL PASS:
+
+  <act>COMMIT ROTATE(P2, Z, 6)</act>
+
+Never commit a repair you have seen fail or have not simulated. Only if your last SIMULATE is spent
+without solving it, commit your best attempt. Committing ends the episode and is scored. If a
+simulation convinces you an earlier line of reasoning was wrong, emit <backtrack/> before your next
+<act>. Output nothing outside these tags.
+
+The action is literal TEXT inside the <act> tags. It is NOT a tool call or a function call - do not
+emit it through any tool-use mechanism.

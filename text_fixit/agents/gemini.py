@@ -69,6 +69,17 @@ def _magnitude_strings(instance):
             "scale_range": f"{sc[0]:.2f}-{sc[1]:.2f}"}
 
 
+BASE_PROMPT_SET = "one_error"          # fallback for any file an ablation set does not override
+
+
+def _load_set(prompt_set, role):
+    """Load `<prompt_set>_<role>.txt`, falling back to the base set for files an ablation omits."""
+    name = f"{prompt_set}_{role}.txt"
+    if not os.path.isfile(os.path.join(_PROMPT_DIR, name)):
+        name = f"{BASE_PROMPT_SET}_{role}.txt"
+    return _load(name)
+
+
 def _load(name):
     """Load a prompt template, honouring the FIXIT_PROMPT_VARIANT ablation switch.
 
@@ -139,11 +150,19 @@ class GeminiAgent(Agent):
         self.model = model or os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
         self.temperature = temperature
         self.max_tokens = max_tokens     # high: with thinking ON the thinking tokens count here
-        self._system_tmpl = _load("system.txt")
-        self._system_img_tmpl = _load("system_image.txt")
-        self._step_tmpl = _load("step.txt")
-        self._contract_tmpl = {"batch": _load("contract_batch.txt"),
-                               "stack": _load("contract_stack.txt")}
+        # A prompt SET is a family of files sharing a prefix: <set>_text.txt, <set>_image.txt,
+        # <set>_step.txt. Every ablation is its own set, so a run's prompt is identified by one
+        # name in the manifest rather than reconstructed from flags. Files the ablation does not
+        # change fall back to BASE_PROMPT_SET, so an ablation ships only what it actually alters.
+        self.prompt_set = os.environ.get("FIXIT_PROMPT_SET", BASE_PROMPT_SET)
+        self._system_tmpl = _load_set(self.prompt_set, "text")
+        self._system_img_tmpl = _load_set(self.prompt_set, "image")
+        self._step_tmpl = _load_set(self.prompt_set, "step")
+        # The one_error sets are self-contained: no $contract_block, one action per turn.
+        self._contract_tmpl = None
+        if os.path.isfile(os.path.join(_PROMPT_DIR, "contract_batch.txt")):
+            self._contract_tmpl = {"batch": _load("contract_batch.txt"),
+                                   "stack": _load("contract_stack.txt")}
         self._client = None
         self._messages = []             # running transcript for history="full"
         # last-call telemetry, drained by run_episode into the turn log (see runlog.py)
@@ -177,7 +196,7 @@ class GeminiAgent(Agent):
         multi_hint = getattr(env, "multi_fault_hint", hard)
         fixable_note = ("Only parts marked fixable=yes may be targeted.\n" if reveal_fixable
                         else "")
-        contract_block = self._contract_tmpl[contract].safe_substitute(
+        contract_block = "" if self._contract_tmpl is None else self._contract_tmpl[contract].safe_substitute(
             value_grid=VALUE_GRID_STR, angle_grid=ANGLE_GRID_STR, scale_grid=SCALE_GRID_STR,
             K=(0 if self.oneshot else env.budget), fixable_note=fixable_note,
             sim_returns=SIM_RETURNS[modality])
@@ -191,6 +210,9 @@ class GeminiAgent(Agent):
             # The set's real generation margin, so the prompt never misstates how broken the
             # instance is. Defaults to 3 -> renders byte-identical to every pre-M8 run.
             margin_x=f"{env.instance.get('broken_margin', 3.0):g}",
+            # self-contained sets reference $fixable_note directly; it used to live only in the
+            # contract block, so omitting it here shipped the literal "$fixable_note" to the model.
+            fixable_note=fixable_note,
             **_magnitude_strings(env.instance),
             thinking_note=self._thinking_note(),
             value_grid=VALUE_GRID_STR, angle_grid=ANGLE_GRID_STR, scale_grid=SCALE_GRID_STR,

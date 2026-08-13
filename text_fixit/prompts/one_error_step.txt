@@ -1,0 +1,8 @@
+$observation
+
+Budget: $budget_left SIMULATE call(s) remaining$commit_note.
+
+Recent attempts (most recent last):
+$history
+
+Output your next action now (one <think> block and one <act> block).

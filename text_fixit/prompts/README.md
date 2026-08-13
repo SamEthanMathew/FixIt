@@ -1,59 +1,94 @@
 # Prompts
 
-The previous generation lives in [`old_prompts/`](old_prompts/) for reference. This directory is
-where the standardized replacements go. **Until the five required files exist here, every LLM agent
-raises on construction** — `agents/gemini.py` loads them by exact filename.
+The standardized set is **`one_error`** — one fault, one action per turn, two closed views.
+Everything from the previous generation is in [`old_prompts/`](old_prompts/) for reference.
 
-## Required files
+## Files
 
-| file | loaded when | must contain |
-|---|---|---|
-| `system.txt` | modality = **text** | `$contract_block` |
-| `system_image.txt` | modality = **image** | `$contract_block` |
-| `contract_batch.txt` | `--contract batch` | the action space + procedure |
-| `contract_stack.txt` | `--contract stack` | same, plus `RESET()` |
-| `step.txt` | every turn (window3 / oneshot only) | `$observation` |
+| file | role |
+|---|---|
+| `one_error_image.txt` | system prompt, image modality |
+| `one_error_text.txt` | system prompt, text modality |
+| `one_error_step.txt` | the per-turn user message (window3 / oneshot; `full` history builds its own) |
 
-A system file is rendered first, and `$contract_block` is replaced by the *already-rendered* contract
-file — so the contract's own variables are substituted before it is injected.
+A **prompt set** is a family of files sharing a prefix. `FIXIT_PROMPT_SET=<name>` selects one;
+`one_error` is the default. Any file a set does not define falls back to `one_error`, so an ablation
+ships only the file it actually changes. The set name is recorded in every run manifest as
+`prompt_set`, so a run's prompt is identified by one name rather than reconstructed from flags.
 
-## Substitution
+These sets are **self-contained** — no `$contract_block`, because there is only one contract now
+(a single action, applied fresh to the original broken object).
 
-`string.Template.safe_substitute`, so **an unknown `$name` is left in the output verbatim rather than
-raising**. A typo'd variable ships silently into the model's context. Grep a rendered prompt for `$`
-before trusting a new template.
+---
 
-### System files (`system.txt`, `system_image.txt`)
+## What the model is told
+
+Worth being explicit, because several of these are choices that could reasonably go the other way.
+
+**It knows which parts exist and which are fixable.** `$part_table` lists every part with an id
+(`P0`, `P1`, …), a human label (`door_1_right`), its role, a `fixable` yes/no column, its **bounding
+box** `(w,d,h)` in metres, and for fixable parts the hinge axis and location. Hiding the
+`role`/`fixable` columns is a runtime switch (`--hard` without `--reveal-fixable`); when hidden,
+`$fixable_note` renders empty so the prompt does not leak the candidate set through the back door.
+
+**It knows part sizes, not part positions.** The bounding box is in the table. The part's *current*
+centre is not — that arrives in the observation.
+
+**It knows the tolerance** (`$tol_pct`, 1.5% at `FIXIT_TAU_FRAC=0.015`) and the three success gates:
+within tolerance, door still closes, no interpenetration.
+
+**It knows the action bounds** — the continuous ranges for translate/rotate/scale.
+
+**It is NOT told:**
+- the numeric deviation, unless `--deviation on`
+- which part is faulty, or the fault type
+- how large faults typically are (the old prompt's "3x this tolerance" line is gone)
+- the healthy target geometry — it must search for it
+
+**Image modality** additionally gets, per turn, two rendered views with all doors closed: the
+original broken object (identical every turn) and the result of the action chosen on the **previous**
+turn. Turn 1 also carries an annotated view with each fixable door recoloured and labelled `P#`.
+
+**Text modality** gets the same comparison as numbers: the original broken per-part centre and size,
+then the result of the previous action as world centres with the doors driven open and shut.
+
+---
+
+## Available variables
+
+`string.Template.safe_substitute` — **an unknown `$name` is left in the output verbatim rather than
+raising.** A typo ships silently into the model's context. Grep a rendered prompt for `$` before
+trusting a new template; that check caught `$fixable_note` reaching a model during this rewrite.
+
+### System files (`*_image.txt`, `*_text.txt`)
 
 | variable | value |
 |---|---|
 | `$category` | `Refrigerator` |
 | `$instance_id` | e.g. `10036_ctrl_translate_0` |
-| `$function_text` / `$success_text` | per-category task and success description |
-| `$part_table` | the rendered part table (ids, labels, bboxes, hinges; `role`/`fixable` columns only when `reveal_fixable`) |
-| `$fault_hint` | `Exactly one part may be faulty.` or the multi-fault wording |
+| `$function_text` | what the object is supposed to do |
+| `$success_text` | what counts as repaired |
+| `$part_table` | the rendered part table (see above) |
 | `$tol_pct` | tolerance as a percentage, from `FIXIT_TAU_FRAC` |
-| `$margin_x` | the set's **real** generation margin (`3` on the hard sets, `1.2` on the easy ones) |
-| `$thinking_note` | reasoning-budget note; empty unless `--thinking-budget` is set |
-| `$contract_block` | the rendered contract file |
-| `$translate_range` `$rotate_range` `$scale_range` | fault magnitude ranges, read **from the instance** |
-
-### Contract files
-
-| variable | value |
-|---|---|
+| `$fixable_note` | "Only parts marked fixable=yes may be targeted." — **empty** when the column is hidden |
 | `$value_grid` `$angle_grid` `$scale_grid` | continuous action bounds |
 | `$K` | SIMULATE budget (0 for oneshot) |
-| `$fixable_note` | the "only fixable parts" line; empty when the fixable column is hidden |
-| `$sim_returns` | what SIMULATE returns, differing by modality |
 
-### Step file
+Also available, unused by `one_error` and listed so an ablation can reach for them:
+`$fault_hint` (single vs multi-fault wording), `$margin_x` (the set's real generation margin),
+`$thinking_note` (reasoning budget), `$translate_range` `$rotate_range` `$scale_range` (fault
+magnitude ranges, read from the instance), `$contract_block` (batch/stack contract text),
+`$success_text`.
+
+### Step file (`*_step.txt`)
 
 `$observation`, `$budget_left`, `$commit_note`, `$history` (last three SIMULATEs).
 
-## Output contract the parser enforces
+---
 
-`action_parser.py` will reject anything else, and a rejected turn costs a turn:
+## Output contract
+
+`action_parser.py` rejects anything else, and a rejected turn costs a turn:
 
 ```
 <think>reasoning</think>
@@ -61,26 +96,46 @@ before trusting a new template.
 ```
 
 - mode is `SIMULATE` or `COMMIT`; `<backtrack/>` may precede `<act>`
-- calls: `TRANSLATE|ROTATE|SCALE(P#, X|Y|Z, value)`, `NO_FIX()`, `RESET()` (stack only)
-- batch accepts an ordered list of up to 6 in `[...]` separated by `;`; stack accepts exactly one
+- calls: `TRANSLATE|ROTATE|SCALE(P#, X|Y|Z, value)`, `NO_FIX()`
+- **exactly one action per turn** under `one_error`
 - magnitudes are clamped to the action bounds, not snapped to a grid
 
-## Two things the old prompts got wrong
+---
 
-Worth not repeating.
+## Ablations
 
-**Never hardcode a number the instance owns.** `margin_x` and the magnitude ranges were literals
-(`3x this tolerance`, `0.08-0.20 m`). On a set generated at margin 1.2 with 0.35× magnitudes, the
-prompt stated values several times off — worse than saying nothing.
+**Every ablation is a new prompt set — never an edit to `one_error`.** Add
+`<name>_image.txt` / `<name>_text.txt` for whichever you change, run with
+`FIXIT_PROMPT_SET=<name>`, and add a row below stating the difference from `one_error`.
 
-**Concrete exemplars get copied verbatim.** With `<act>SIMULATE TRANSLATE(P1, Y, -0.04)</act>` in the
-procedure block, Qwen3-VL-8B opened **90% of episodes** with exactly that action, and 67% of all its
-actions used the exemplar's axis. Replacing the values with metasyntax cut verbatim copying from 62%
-to 13%. It did not improve the score — but it removes a confound from any result about *what the
-model chose*.
+| set | differs from `one_error` by | measured effect |
+|---|---|---|
+| `one_error` | — (baseline) | — |
 
-## Variant switch
+### Known candidates, with prior evidence
 
-`FIXIT_PROMPT_VARIANT=foo` makes `system.txt` resolve to `system_foo.txt` when that file exists, and
-fall back to the base file when it does not — so an ablation can never half-apply. The variant is
-recorded in the run manifest.
+**Remove the concrete exemplar.** `one_error` keeps `<act>SIMULATE TRANSLATE(P1, Y, -0.04)</act>` in
+the PROCEDURE block. Under the previous generation Qwen3-VL-8B opened **90% of episodes with exactly
+that action**, and 67% of all its actions used the exemplar's axis. Replacing the values with
+metasyntax cut verbatim copying from 62% to 13% — but did **not** change the success rate. Worth
+re-running as `one_error_metasyntax` because it removes a confound from any claim about what the
+model *chose*, not because it is expected to help.
+
+**State the fault scale.** `one_error` deliberately omits it. Adding `$translate_range` etc. tests
+whether magnitude estimation is the constraint. Prior evidence says it is not: once a model reaches
+the right part+type+axis, its best magnitude is already ~1.0× ground truth.
+
+**Show the deviation.** Not a prompt change — the `--deviation on` flag. On the hardened rung this
+took the API models from 20% to 65–76% while leaving Qwen unmoved, which is the sharpest
+capability split measured so far.
+
+---
+
+## Two hazards from the previous generation
+
+**Never hardcode a value the instance owns.** `margin_x` and the magnitude ranges used to be
+literals (`3x this tolerance`, `0.08-0.20 m`). On a set generated at margin 1.2 with 0.35×
+magnitudes the prompt stated numbers several times off — worse than saying nothing. `one_error`
+avoids this by not mentioning fault scale at all.
+
+**Concrete exemplars get copied verbatim.** See the ablation table above.
