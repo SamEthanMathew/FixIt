@@ -448,26 +448,35 @@ def main():
     print(f"shapes usable: {len(inv)}   >=2 doors: {len(two)}   1 door: {len(one)}")
 
     if args.set == "easy":
-        # Single fault, type-balanced, distinct bases. The point of this set is the MARGIN:
-        # pass --broken-margin 1.5 and every fault is only 1.5 tau off, so a correction needs
-        # magnitude accuracy of +/-1/1.5 rather than +/-1/3. See M7 section 6.
+        # Single fault, type-balanced. The point of this set is the MARGIN and the draw range:
+        # --broken-margin 1.2 --difficulty-scale 0.35 puts faults at ~1.6 tau, so a correction needs
+        # magnitude accuracy of +/-60% rather than +/-22%. See M7 section 6.
+        #
+        # per_type may exceed the number of usable shapes (36), so bases are CYCLED with an
+        # incrementing seed: build_control seeds on (base, ctype, seed) and ids are
+        # {base}_ctrl_{ctype}_{seed}, so each pass over the pool yields genuinely different
+        # corruptions on the same geometry. Instances sharing a base are CORRELATED -- the effective
+        # n is below the nominal n -- which is why the count per base is reported below.
         rng = random.Random(args.seed)
         cpool = sorted(inv)
         rng.shuffle(cpool)
-        types = itertools.cycle(CTYPES)
-        rows, want = [], args.per_type * len(CTYPES)
-        for base in cpool:
-            if len(rows) >= want:
-                break
-            rec = build_control(base, inv[base], split_of[base], args.seed, next(types), cid)
-            if rec:
-                rows.append(rec)
-            else:
-                print(f"  drop easy {base} (gate)")
-        if len(rows) < want:
-            print(f"  UNDER-FILLED: {len(rows)}/{want} (recorded, not padded)")
+        rows = []
+        for ctype in CTYPES:
+            got, k = 0, 0
+            while got < args.per_type and k < len(cpool) * 6:
+                base = cpool[k % len(cpool)]
+                seed_i = args.seed + (k // len(cpool))
+                k += 1
+                rec = build_control(base, inv[base], split_of[base], seed_i, ctype, cid)
+                if rec:
+                    rows.append(rec)
+                    got += 1
+                else:
+                    print(f"  drop easy {base} {ctype} seed{seed_i} (gate)")
+            if got < args.per_type:
+                print(f"  UNDER-FILLED {ctype}: {got}/{args.per_type} (recorded, not padded)")
         p.disconnect(cid)
-        _write_sets(((args.out_easy, rows, "easy"),))
+        _write_sets(((args.out_easy, rows, "easy"),), allow_base_reuse=True)
         return
 
     if args.set == "2fault":
@@ -526,7 +535,7 @@ def main():
                  (args.out_control, control, "control")))
 
 
-def _write_sets(specs):
+def _write_sets(specs, allow_base_reuse=False):
     for path, rows, label in specs:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w") as f:
@@ -546,7 +555,13 @@ def _write_sets(specs):
         if pairs:
             print(f"  fault-type combinations: {pairs}")
         if rows:
-            assert len(bases) == len(rows), f"{label}: base reuse"
+            if not allow_base_reuse:
+                assert len(bases) == len(rows), f"{label}: base reuse"
+            else:
+                from collections import Counter
+                per = Counter(r["base"] for r in rows)
+                print(f"  instances per base: min={min(per.values())} "
+                      f"max={max(per.values())} (correlated; effective n < {len(rows)})")
             assert all(r["gt_fixed_pass"] for r in rows), f"{label}: an instance is unsolvable"
             assert not any(r["broken_pass"] for r in rows), f"{label}: an instance already passes"
             assert all(abs(r["tau_frac"] - geom.TAU_FRAC) < 1e-12 for r in rows)

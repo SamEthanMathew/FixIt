@@ -208,6 +208,14 @@ GROUPS = {
                   ("robotics-er-2 image", "base_er_image")]),
     "m4": ("Composite-fault hard benchmark (deviation OFF, budget 10, tau 1.5%, hard mode). "
            "Shards of one condition are merged.", None),
+    "m13": ("API models on the EASIEST rung (instances_easy75: 25 per corruption type, single fault, "
+            "D~1.6, tau 2.5%). Fills the blank row in the capability ladder - g3 and er had never "
+            "been run on the easy set. loop_gemini_full, i.e. the image-transport-safe path.", None),
+    "m12": ("Easy rung re-run with images ACTUALLY attached (post image-transport fix). Compare "
+            "against m9_qw8_easy_image, which was image-blind.", None),
+    "m11": ("Capability ablations on the hardened control: deviation visible vs hidden, and one-shot "
+            "vs full loop. NOTE the oneshot arms are image-blind (transport bug) - see "
+            "updatesAug12/INVALIDATED_DATA.md.", None),
     "m10": ("Qwen difficulty ladder, complete grid: 8B vs 32B-FP8 on every existing rung, all "
             "window3 + batch + image + budget 10. Rungs: easy (D~1.6) / M7 baseline (D~4.6) / "
             "hardened control (tau 1.5%) / n=2 composite / n=3 composite.", None),

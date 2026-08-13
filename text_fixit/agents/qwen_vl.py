@@ -99,6 +99,7 @@ class QwenVLAgent(GeminiAgent):
         the request stays bounded."""
         user_idxs = [i for i, m in enumerate(self._messages) if m["role"] == "user"]
         keep = set(user_idxs[-self.IMAGE_HISTORY_WINDOW:])
+        self._images_attached = sum(len(self._messages[i].get("images") or []) for i in keep)
         out = []
         for i, m in enumerate(self._messages):
             role = "assistant" if m["role"] == "model" else "user"

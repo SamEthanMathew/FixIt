@@ -245,6 +245,8 @@ class GeminiAgent(Agent):
             self.last_prompt = {"system": system, "user": user,
                                 "transcript_turns": len(self._messages)}
             raw = self._generate_messages(system)
+            if isinstance(self.last_meta, dict):
+                self.last_meta["images_sent"] = getattr(self, "_images_attached", None)
             self._messages.append(_msg("model", raw))
             self.last_raw = raw
             return raw
@@ -303,6 +305,9 @@ class GeminiAgent(Agent):
         from google.genai import types
         user_idxs = [i for i, m in enumerate(self._messages) if m["role"] == "user"]
         keep = set(user_idxs[-self.IMAGE_HISTORY_WINDOW:])
+        # Count what is ACTUALLY attached: older turns keep their text but lose their images, so
+        # this is not len(obs["images"]). Reported as images_sent_to_model.
+        self._images_attached = sum(len(self._messages[i].get("images") or []) for i in keep)
         contents = []
         for i, m in enumerate(self._messages):
             has_imgs = bool(m.get("images"))
