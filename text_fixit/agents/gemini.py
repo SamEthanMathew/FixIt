@@ -83,7 +83,18 @@ def _load(name):
         alt = os.path.join(_PROMPT_DIR, f"{stem}_{variant}{ext}")
         if os.path.isfile(alt):
             name = os.path.basename(alt)
-    with open(os.path.join(_PROMPT_DIR, name)) as f:
+    path = os.path.join(_PROMPT_DIR, name)
+    if not os.path.isfile(path):
+        # The previous generation was moved to prompts/old_prompts/ pending standardized
+        # replacements. Fail with the requirement, not a bare path: a missing template is a
+        # setup error, and the caller needs to know WHICH file and where the old one went.
+        old = os.path.join(_PROMPT_DIR, "old_prompts", name)
+        hint = (f" A previous version exists at {old} — copy or adapt it."
+                if os.path.isfile(old) else "")
+        raise FileNotFoundError(
+            f"prompt template {name!r} not found in {_PROMPT_DIR}.{hint} "
+            f"See prompts/README.md for the five required files and their variables.")
+    with open(path) as f:
         return Template(f.read())
 
 
