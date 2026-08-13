@@ -257,6 +257,8 @@ Recorded because each went into the record before it was stable.
 | "the 32B closes the text gap" (M9, n=21) | **withdrawn** | settled at 17% vs 23% image by n=30 |
 | "4× parameters buys nothing" (M9, n=20) | **premature** | 32B reached 8% vs 1% at full n=75 |
 | "deviation gives 100%" (M11, n=4) | **withdrawn** | settled at 65–76% by n=20–25 |
+| "the closed loop is worth 4–8 points" (M11) | **retracted** | one-shot arms were image-blind (transport bug); the comparison was loop+images vs one-shot-without-images |
+| M9/M10 image-modality Qwen results | **relabelled** | window3 never attached images; ladder shape survives (corrected re-run 13% vs 17%) but the cells were not image runs |
 
 The common thread: **every one was an interim reading at n<25.** A 95% Wilson interval at n=25 spans
 roughly ±15 points.

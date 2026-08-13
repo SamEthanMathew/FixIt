@@ -108,6 +108,23 @@ within ±25% in 71% of those, yet passes only 20%. At D≈4.6 the required accur
 5. **Scale is a weak lever for open models.** 8B→32B: +7 points on one rung, zero on three others,
    and the ordering even inverts on the hardened control.
 
+## 5b. RETRACTION — the one-shot ablation (Test 5)
+
+An image-transport bug was found after this report was written: the stateless agent path (`window3`
+history and **every** `oneshot` agent) never attached `obs["images"]` to the request. See
+`updatesAug12/INVALIDATED_DATA.md`.
+
+**Finding 4 above — "the closed loop contributes very little" — does not survive.** All four
+one-shot arms were image-blind while their full-loop comparators (`loop_gemini_full`) were not, so
+the table compares *loop with images* against *one-shot without images*. The loop's contribution is
+confounded with the images' contribution and cannot be separated from this data. The claim needs a
+re-run of the one-shot arms on the fixed code before it can be made.
+
+Findings 1, 2, 3 and 5 stand: the deviation ablation used `loop_gemini_full` for both arms
+(unaffected), the funnel is computed from `m5_*` and `m10_*` — and while `m10_*` was image-blind,
+its 0/160 on the hard rungs is a floor that pixels cannot lower. The corrected easy-rung re-run
+scores 13% against 17% image-blind, i.e. no material change.
+
 ## 6. Caveats
 
 - **n is 25–30 per cell** for most conditions (75 for the standard single-fault rung). A 95% Wilson

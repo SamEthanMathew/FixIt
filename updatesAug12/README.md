@@ -26,6 +26,10 @@ and received **no pixels at all**. The logger still wrote the PNGs to disk, beca
 prompt tokens for window3+image were **1350**, *below* window3+text at **1479**; two attached images
 are worth ~1100 tokens. After the fix the same configuration measures **2465**.
 
+**Full inventory: [`INVALIDATED_DATA.md`](INVALIDATED_DATA.md)** — 17 runs / 523 episodes,
+auto-generated from manifests and turn logs, with per-group guidance on what each affected
+run was used to claim.
+
 **Runs affected — every image-modality run on `window3` or `oneshot`:**
 
 | run group | agent | status |
