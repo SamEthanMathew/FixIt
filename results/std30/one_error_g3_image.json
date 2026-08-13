@@ -1,0 +1,1965 @@
+{
+  "condition": "one_error_g3_image",
+  "prompt_set": "one_error",
+  "model": "gemini-3.1-pro-preview",
+  "agent": "loop_gemini_full",
+  "modality": "image",
+  "contract": "batch",
+  "max_actions": 1,
+  "budget": 10,
+  "tau_frac": 0.015,
+  "problem_set": {
+    "n": 30,
+    "instances_path": "data/instances_std30.jsonl",
+    "mean_difficulty_D": 7.62
+  },
+  "trials": 30,
+  "solved": 16,
+  "success_rate": 0.5333,
+  "iterations_when_solved": {
+    "n": 16,
+    "min": 1,
+    "max": 6,
+    "median": 2.5,
+    "mean": 2.88
+  },
+  "iterations_when_failed": {
+    "n": 14,
+    "min": 1,
+    "max": 10,
+    "median": 10.0,
+    "mean": 7.93
+  },
+  "ever_reached_threshold": 16,
+  "closest_approach_over_tau": {
+    "best": 0.0,
+    "mean": 2.61,
+    "median": 0.91
+  },
+  "by_fault_type": {
+    "rotate": {
+      "n": 10,
+      "solved": 7,
+      "mean_closest_over_tau": 1.91
+    },
+    "scale": {
+      "n": 10,
+      "solved": 9,
+      "mean_closest_over_tau": 1.45
+    },
+    "translate": {
+      "n": 10,
+      "solved": 0,
+      "mean_closest_over_tau": 4.46
+    }
+  },
+  "deviation_trajectory": [
+    {
+      "turn": 1,
+      "n": 30,
+      "mean_best_over_tau": 5.53,
+      "best_single_over_tau": 0.0,
+      "n_under_threshold": 6
+    },
+    {
+      "turn": 2,
+      "n": 30,
+      "mean_best_over_tau": 3.84,
+      "best_single_over_tau": 0.0,
+      "n_under_threshold": 8
+    },
+    {
+      "turn": 3,
+      "n": 22,
+      "mean_best_over_tau": 3.4,
+      "best_single_over_tau": 0.23,
+      "n_under_threshold": 4
+    },
+    {
+      "turn": 4,
+      "n": 20,
+      "mean_best_over_tau": 3.21,
+      "best_single_over_tau": 0.1,
+      "n_under_threshold": 6
+    },
+    {
+      "turn": 5,
+      "n": 18,
+      "mean_best_over_tau": 3.5,
+      "best_single_over_tau": 0.1,
+      "n_under_threshold": 4
+    },
+    {
+      "turn": 6,
+      "n": 14,
+      "mean_best_over_tau": 4.06,
+      "best_single_over_tau": 0.01,
+      "n_under_threshold": 3
+    },
+    {
+      "turn": 7,
+      "n": 14,
+      "mean_best_over_tau": 4.06,
+      "best_single_over_tau": 0.01,
+      "n_under_threshold": 3
+    },
+    {
+      "turn": 8,
+      "n": 10,
+      "mean_best_over_tau": 5.32,
+      "best_single_over_tau": 1.42,
+      "n_under_threshold": 0
+    },
+    {
+      "turn": 9,
+      "n": 10,
+      "mean_best_over_tau": 5.32,
+      "best_single_over_tau": 1.42,
+      "n_under_threshold": 0
+    },
+    {
+      "turn": 10,
+      "n": 10,
+      "mean_best_over_tau": 5.18,
+      "best_single_over_tau": 1.42,
+      "n_under_threshold": 0
+    },
+    {
+      "turn": 11,
+      "n": 9,
+      "mean_best_over_tau": 5.29,
+      "best_single_over_tau": 1.42,
+      "n_under_threshold": 0
+    }
+  ],
+  "wall_clock_s": 13515.9,
+  "seconds_per_trial": {
+    "n": 30,
+    "min": 19.4,
+    "max": 2558.8,
+    "median": 239.05,
+    "mean": 450.53
+  },
+  "turn_latency_s": {
+    "n": 187,
+    "min": 2.7,
+    "max": 1096.5,
+    "median": 19.8,
+    "mean": 69.54
+  },
+  "tokens": {
+    "prompt": 1892770,
+    "completion_visible": 232470,
+    "thinking": 926682,
+    "output_billed": 1159152,
+    "total": 3051922,
+    "per_trial": 101731
+  },
+  "integrity": {
+    "invalid_actions": 0,
+    "api_giveup_trials": 0,
+    "images_sent_per_turn": [
+      2,
+      4
+    ]
+  },
+  "per_problem": [
+    {
+      "slot": "10036_ctrl_translate_0",
+      "id": "10036_ctrl_translate_0",
+      "fault_type": "translate",
+      "ground_truth": "TRANSLATE(P1, X, -0.19847)",
+      "tau_mm": 25.9,
+      "initial_deviation_mm": 198.5,
+      "passed": false,
+      "iterations": 10,
+      "final_over_tolerance_mm": 172.582,
+      "final_over_tau": 7.666,
+      "closest_over_tau": 7.67,
+      "seconds": 296.4,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "ROTATE(P1, Y, -30.0000)",
+          "over_tolerance_mm": 176.2,
+          "over_tau": 7.806,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "ROTATE(P1, Y, -15.0000)",
+          "over_tolerance_mm": 173.5,
+          "over_tau": 7.703,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "ROTATE(P1, Y, -5.0000)",
+          "over_tolerance_mm": 172.7,
+          "over_tau": 7.671,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "ROTATE(P1, Y, -10.0000)",
+          "over_tolerance_mm": 173.0,
+          "over_tau": 7.683,
+          "pass": false
+        },
+        {
+          "turn": 5,
+          "action": "ROTATE(P1, Y, -8.0000)",
+          "over_tolerance_mm": 172.9,
+          "over_tau": 7.677,
+          "pass": false
+        },
+        {
+          "turn": 6,
+          "action": "ROTATE(P1, Y, -9.0000)",
+          "over_tolerance_mm": 172.9,
+          "over_tau": 7.68,
+          "pass": false
+        },
+        {
+          "turn": 7,
+          "action": "ROTATE(P2, Z, 5.0000)",
+          "over_tolerance_mm": 172.6,
+          "over_tau": 7.666,
+          "pass": false
+        },
+        {
+          "turn": 8,
+          "action": "ROTATE(P2, Z, -5.0000)",
+          "over_tolerance_mm": 172.6,
+          "over_tau": 7.666,
+          "pass": false
+        },
+        {
+          "turn": 9,
+          "action": "ROTATE(P2, Y, -15.0000)",
+          "over_tolerance_mm": 172.6,
+          "over_tau": 7.666,
+          "pass": false
+        },
+        {
+          "turn": 10,
+          "action": "ROTATE(P2, X, -10.0000)",
+          "over_tolerance_mm": 172.6,
+          "over_tau": 7.666,
+          "pass": false
+        },
+        {
+          "turn": 11,
+          "action": "ROTATE(P2, Y, -5.0000)",
+          "over_tolerance_mm": 172.6,
+          "over_tau": 7.666,
+          "pass": false
+        }
+      ]
+    },
+    {
+      "slot": "10685_ctrl_scale_0",
+      "id": "10685_ctrl_scale_0",
+      "fault_type": "scale",
+      "ground_truth": "SCALE(P2, X, 0.690325)",
+      "tau_mm": 25.8,
+      "initial_deviation_mm": 78.1,
+      "passed": true,
+      "iterations": 2,
+      "final_over_tolerance_mm": -9.818,
+      "final_over_tau": 0.619,
+      "closest_over_tau": 0.62,
+      "seconds": 33.0,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "SCALE(P1, X, 0.656250)",
+          "over_tolerance_mm": 52.3,
+          "over_tau": 3.032,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "SCALE(P2, X, 0.627119)",
+          "over_tolerance_mm": -9.8,
+          "over_tau": 0.619,
+          "pass": true
+        },
+        {
+          "turn": 3,
+          "action": "SCALE(P2, X, 0.627119)",
+          "over_tolerance_mm": -9.8,
+          "over_tau": 0.619,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "slot": "11211_ctrl_rotate_0",
+      "id": "11211_ctrl_rotate_0",
+      "fault_type": "rotate",
+      "ground_truth": "ROTATE(P0, Z, 22.5051)",
+      "tau_mm": 25.2,
+      "initial_deviation_mm": 216.3,
+      "passed": false,
+      "iterations": 1,
+      "final_over_tolerance_mm": 331.067,
+      "final_over_tau": 14.135,
+      "closest_over_tau": 14.13,
+      "seconds": 206.6,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "ROTATE(P0, Z, -30.0000)",
+          "over_tolerance_mm": 465.0,
+          "over_tau": 19.448,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "ROTATE(P0, Z, -15.0000)",
+          "over_tolerance_mm": 331.1,
+          "over_tau": 14.135,
+          "pass": false
+        }
+      ]
+    },
+    {
+      "slot": "12249_ctrl_translate_0",
+      "id": "12249_ctrl_translate_0",
+      "fault_type": "translate",
+      "ground_truth": "TRANSLATE(P0, X, 0.17520)",
+      "tau_mm": 24.8,
+      "initial_deviation_mm": 175.2,
+      "passed": false,
+      "iterations": 10,
+      "final_over_tolerance_mm": 154.692,
+      "final_over_tau": 7.244,
+      "closest_over_tau": 7.19,
+      "seconds": 155.3,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "ROTATE(P0, Y, -15.0000)",
+          "over_tolerance_mm": 174.6,
+          "over_tau": 8.048,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "ROTATE(P0, Y, 15.0000)",
+          "over_tolerance_mm": 174.4,
+          "over_tau": 8.039,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "ROTATE(P0, Y, 10.0000)",
+          "over_tolerance_mm": 161.7,
+          "over_tau": 7.527,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "ROTATE(P0, Y, 5.0000)",
+          "over_tolerance_mm": 153.4,
+          "over_tau": 7.19,
+          "pass": false
+        },
+        {
+          "turn": 5,
+          "action": "ROTATE(P0, Y, 7.0000)",
+          "over_tolerance_mm": 156.1,
+          "over_tau": 7.3,
+          "pass": false
+        },
+        {
+          "turn": 6,
+          "action": "ROTATE(P0, Y, 6.0000)",
+          "over_tolerance_mm": 154.6,
+          "over_tau": 7.241,
+          "pass": false
+        },
+        {
+          "turn": 7,
+          "action": "ROTATE(P0, Y, 5.7000)",
+          "over_tolerance_mm": 154.2,
+          "over_tau": 7.225,
+          "pass": false
+        },
+        {
+          "turn": 8,
+          "action": "ROTATE(P0, Y, 6.5000)",
+          "over_tolerance_mm": 155.3,
+          "over_tau": 7.27,
+          "pass": false
+        },
+        {
+          "turn": 9,
+          "action": "ROTATE(P0, Y, 6.2000)",
+          "over_tolerance_mm": 154.9,
+          "over_tau": 7.252,
+          "pass": false
+        },
+        {
+          "turn": 10,
+          "action": "ROTATE(P0, Y, 6.1000)",
+          "over_tolerance_mm": 154.8,
+          "over_tau": 7.246,
+          "pass": false
+        },
+        {
+          "turn": 11,
+          "action": "ROTATE(P0, Y, 6.0500)",
+          "over_tolerance_mm": 154.7,
+          "over_tau": 7.244,
+          "pass": false
+        }
+      ]
+    },
+    {
+      "slot": "12252_ctrl_rotate_0",
+      "id": "12252_ctrl_rotate_0",
+      "fault_type": "rotate",
+      "ground_truth": "ROTATE(P0, Z, -23.2817)",
+      "tau_mm": 26.0,
+      "initial_deviation_mm": 260.6,
+      "passed": false,
+      "iterations": 10,
+      "final_over_tolerance_mm": 306.287,
+      "final_over_tau": 12.773,
+      "closest_over_tau": 1.42,
+      "seconds": 271.5,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "ROTATE(P0, Z, 15.0000)",
+          "over_tolerance_mm": 397.4,
+          "over_tau": 16.276,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "ROTATE(P0, Z, -15.0000)",
+          "over_tolerance_mm": 67.2,
+          "over_tau": 3.584,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "ROTATE(P0, Z, -18.0000)",
+          "over_tolerance_mm": 33.5,
+          "over_tau": 2.287,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "ROTATE(P0, Z, -20.0000)",
+          "over_tolerance_mm": 11.0,
+          "over_tau": 1.421,
+          "pass": false
+        },
+        {
+          "turn": 5,
+          "action": "ROTATE(P0, Z, -19.0000)",
+          "over_tolerance_mm": 22.2,
+          "over_tau": 1.854,
+          "pass": false
+        },
+        {
+          "turn": 6,
+          "action": "ROTATE(P0, Z, -17.0000)",
+          "over_tolerance_mm": 44.7,
+          "over_tau": 2.72,
+          "pass": false
+        },
+        {
+          "turn": 7,
+          "action": "ROTATE(P0, Z, -17.5000)",
+          "over_tolerance_mm": 39.1,
+          "over_tau": 2.503,
+          "pass": false
+        },
+        {
+          "turn": 8,
+          "action": "ROTATE(P0, Z, -17.8000)",
+          "over_tolerance_mm": 35.7,
+          "over_tau": 2.374,
+          "pass": false
+        },
+        {
+          "turn": 9,
+          "action": "ROTATE(P0, Z, -17.6000)",
+          "over_tolerance_mm": 38.0,
+          "over_tau": 2.46,
+          "pass": false
+        },
+        {
+          "turn": 10,
+          "action": "ROTATE(P0, Z, -17.7000)",
+          "over_tolerance_mm": 36.9,
+          "over_tau": 2.417,
+          "pass": false
+        },
+        {
+          "turn": 11,
+          "action": "ROTATE(P0, Y, -30.0000)",
+          "over_tolerance_mm": 306.3,
+          "over_tau": 12.773,
+          "pass": false
+        }
+      ]
+    },
+    {
+      "slot": "10143_ctrl_rotate_0",
+      "id": "10143_ctrl_rotate_0",
+      "fault_type": "rotate",
+      "ground_truth": "ROTATE(P2, Z, -23.7176)",
+      "tau_mm": 14.6,
+      "initial_deviation_mm": 47.9,
+      "passed": true,
+      "iterations": 6,
+      "final_over_tolerance_mm": -14.581,
+      "final_over_tau": 0.005,
+      "closest_over_tau": 0.01,
+      "seconds": 336.1,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "ROTATE(P2, Z, 15.0000)",
+          "over_tolerance_mm": 62.6,
+          "over_tau": 5.275,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "ROTATE(P2, Z, -15.0000)",
+          "over_tolerance_mm": 3.1,
+          "over_tau": 1.209,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "ROTATE(P2, Y, -30.0000)",
+          "over_tolerance_mm": 50.2,
+          "over_tau": 4.429,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "ROTATE(P2, Z, -30.0000)",
+          "over_tolerance_mm": -1.9,
+          "over_tau": 0.872,
+          "pass": false
+        },
+        {
+          "turn": 5,
+          "action": "ROTATE(P2, Z, -25.0000)",
+          "over_tolerance_mm": -12.0,
+          "over_tau": 0.178,
+          "pass": false
+        },
+        {
+          "turn": 6,
+          "action": "ROTATE(P2, Z, -23.7500)",
+          "over_tolerance_mm": -14.6,
+          "over_tau": 0.005,
+          "pass": true
+        },
+        {
+          "turn": 7,
+          "action": "ROTATE(P2, Z, -23.7500)",
+          "over_tolerance_mm": -14.6,
+          "over_tau": 0.005,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "slot": "10867_ctrl_scale_0",
+      "id": "10867_ctrl_scale_0",
+      "fault_type": "scale",
+      "ground_truth": "SCALE(P0, X, 0.724298)",
+      "tau_mm": 24.1,
+      "initial_deviation_mm": 162.0,
+      "passed": true,
+      "iterations": 6,
+      "final_over_tolerance_mm": -4.619,
+      "final_over_tau": 0.808,
+      "closest_over_tau": 0.81,
+      "seconds": 2558.8,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "SCALE(P2, X, 0.594600)",
+          "over_tolerance_mm": 137.9,
+          "over_tau": 6.727,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "SCALE(P0, X, 0.779400)",
+          "over_tolerance_mm": 8.3,
+          "over_tau": 1.345,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "SCALE(P2, Z, 0.562500)",
+          "over_tolerance_mm": 137.9,
+          "over_tau": 6.727,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "ROTATE(P2, Z, 5.7300)",
+          "over_tolerance_mm": 137.9,
+          "over_tau": 6.727,
+          "pass": false
+        },
+        {
+          "turn": 5,
+          "action": "SCALE(P2, X, 0.549000)",
+          "over_tolerance_mm": 137.9,
+          "over_tau": 6.727,
+          "pass": false
+        },
+        {
+          "turn": 6,
+          "action": "SCALE(P0, X, 0.691176)",
+          "over_tolerance_mm": -4.6,
+          "over_tau": 0.808,
+          "pass": true
+        },
+        {
+          "turn": 7,
+          "action": "SCALE(P0, X, 0.691176)",
+          "over_tolerance_mm": -4.6,
+          "over_tau": 0.808,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "slot": "11178_ctrl_translate_0",
+      "id": "11178_ctrl_translate_0",
+      "fault_type": "translate",
+      "ground_truth": "TRANSLATE(P1, Y, -0.14547)",
+      "tau_mm": 24.8,
+      "initial_deviation_mm": 145.5,
+      "passed": false,
+      "iterations": 6,
+      "final_over_tolerance_mm": 155.776,
+      "final_over_tau": 7.27,
+      "closest_over_tau": 2.63,
+      "seconds": 727.5,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "TRANSLATE(P1, Z, -0.10000)",
+          "over_tolerance_mm": 151.7,
+          "over_tau": 7.105,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "TRANSLATE(P1, Z, -0.05000)",
+          "over_tolerance_mm": 129.0,
+          "over_tau": 6.191,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "TRANSLATE(P1, Y, -0.08000)",
+          "over_tolerance_mm": 40.6,
+          "over_tau": 2.635,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "TRANSLATE(P1, X, -0.04000)",
+          "over_tolerance_mm": 126.0,
+          "over_tau": 6.073,
+          "pass": false
+        },
+        {
+          "turn": 5,
+          "action": "SCALE(P1, X, 1.085000)",
+          "over_tolerance_mm": 123.2,
+          "over_tau": 5.96,
+          "pass": false
+        },
+        {
+          "turn": 6,
+          "action": "ROTATE(P1, Y, -30.0000)",
+          "over_tolerance_mm": 155.8,
+          "over_tau": 7.27,
+          "pass": false
+        },
+        {
+          "turn": 7,
+          "action": "ROTATE(P1, Y, -30.0000)",
+          "over_tolerance_mm": 155.8,
+          "over_tau": 7.27,
+          "pass": false
+        }
+      ]
+    },
+    {
+      "slot": "12042_ctrl_rotate_0",
+      "id": "12042_ctrl_rotate_0",
+      "fault_type": "rotate",
+      "ground_truth": "ROTATE(P1, Z, -38.0044)",
+      "tau_mm": 29.1,
+      "initial_deviation_mm": 119.8,
+      "passed": true,
+      "iterations": 1,
+      "final_over_tolerance_mm": -29.058,
+      "final_over_tau": 0.0,
+      "closest_over_tau": 0.0,
+      "seconds": 70.3,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "ROTATE(P1, Z, -38.0000)",
+          "over_tolerance_mm": -29.1,
+          "over_tau": 0.0,
+          "pass": true
+        },
+        {
+          "turn": 2,
+          "action": "ROTATE(P1, Z, -38.0000)",
+          "over_tolerance_mm": -29.1,
+          "over_tau": 0.0,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "slot": "12055_ctrl_translate_0",
+      "id": "12055_ctrl_translate_0",
+      "fault_type": "translate",
+      "ground_truth": "TRANSLATE(P0, X, -0.08777)",
+      "tau_mm": 27.7,
+      "initial_deviation_mm": 87.8,
+      "passed": false,
+      "iterations": 10,
+      "final_over_tolerance_mm": 60.252,
+      "final_over_tau": 3.176,
+      "closest_over_tau": 1.73,
+      "seconds": 153.6,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "ROTATE(P0, Y, -15.0000)",
+          "over_tolerance_mm": 76.0,
+          "over_tau": 3.747,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "ROTATE(P0, Y, -5.0000)",
+          "over_tolerance_mm": 62.0,
+          "over_tau": 3.241,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "ROTATE(P0, Y, -2.0000)",
+          "over_tolerance_mm": 60.4,
+          "over_tau": 3.182,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "ROTATE(P0, Y, -1.0000)",
+          "over_tolerance_mm": 60.2,
+          "over_tau": 3.173,
+          "pass": false
+        },
+        {
+          "turn": 5,
+          "action": "ROTATE(P0, Y, -1.5000)",
+          "over_tolerance_mm": 60.3,
+          "over_tau": 3.177,
+          "pass": false
+        },
+        {
+          "turn": 6,
+          "action": "ROTATE(P0, Y, -1.2500)",
+          "over_tolerance_mm": 60.2,
+          "over_tau": 3.175,
+          "pass": false
+        },
+        {
+          "turn": 7,
+          "action": "ROTATE(P0, Y, -1.5000)",
+          "over_tolerance_mm": 60.3,
+          "over_tau": 3.177,
+          "pass": false
+        },
+        {
+          "turn": 8,
+          "action": "ROTATE(P0, Y, -1.3500)",
+          "over_tolerance_mm": 60.2,
+          "over_tau": 3.176,
+          "pass": false
+        },
+        {
+          "turn": 9,
+          "action": "ROTATE(P0, Y, -1.4000)",
+          "over_tolerance_mm": 60.2,
+          "over_tau": 3.176,
+          "pass": false
+        },
+        {
+          "turn": 10,
+          "action": "TRANSLATE(P0, X, -0.04000)",
+          "over_tolerance_mm": 20.1,
+          "over_tau": 1.725,
+          "pass": false
+        },
+        {
+          "turn": 11,
+          "action": "ROTATE(P0, Y, -1.4500)",
+          "over_tolerance_mm": 60.3,
+          "over_tau": 3.176,
+          "pass": false
+        }
+      ]
+    },
+    {
+      "slot": "10489_ctrl_scale_0",
+      "id": "10489_ctrl_scale_0",
+      "fault_type": "scale",
+      "ground_truth": "SCALE(P2, Y, 0.771644)",
+      "tau_mm": 20.2,
+      "initial_deviation_mm": 282.3,
+      "passed": true,
+      "iterations": 4,
+      "final_over_tolerance_mm": -18.214,
+      "final_over_tau": 0.097,
+      "closest_over_tau": 0.1,
+      "seconds": 770.6,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "SCALE(P1, Y, 0.758300)",
+          "over_tolerance_mm": 262.1,
+          "over_tau": 13.997,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "TRANSLATE(P2, Y, -0.11600)",
+          "over_tolerance_mm": 173.9,
+          "over_tau": 9.622,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "SCALE(P2, Y, 0.797386)",
+          "over_tolerance_mm": 11.7,
+          "over_tau": 1.578,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "SCALE(P2, Y, 0.773226)",
+          "over_tolerance_mm": -18.2,
+          "over_tau": 0.097,
+          "pass": true
+        },
+        {
+          "turn": 5,
+          "action": "SCALE(P2, Y, 0.773226)",
+          "over_tolerance_mm": -18.2,
+          "over_tau": 0.097,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "slot": "10620_ctrl_translate_0",
+      "id": "10620_ctrl_translate_0",
+      "fault_type": "translate",
+      "ground_truth": "TRANSLATE(P2, X, 0.08216)",
+      "tau_mm": 25.8,
+      "initial_deviation_mm": 82.2,
+      "passed": false,
+      "iterations": 10,
+      "final_over_tolerance_mm": 56.358,
+      "final_over_tau": 3.184,
+      "closest_over_tau": 3.18,
+      "seconds": 277.9,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "ROTATE(P2, Y, 15.0000)",
+          "over_tolerance_mm": 59.5,
+          "over_tau": 3.306,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "ROTATE(P2, Y, 10.0000)",
+          "over_tolerance_mm": 57.8,
+          "over_tau": 3.239,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "ROTATE(P2, Y, 12.5000)",
+          "over_tolerance_mm": 58.6,
+          "over_tau": 3.27,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "ROTATE(P2, Y, 11.2500)",
+          "over_tolerance_mm": 58.2,
+          "over_tau": 3.254,
+          "pass": false
+        },
+        {
+          "turn": 5,
+          "action": "ROTATE(P2, Y, 12.0000)",
+          "over_tolerance_mm": 58.4,
+          "over_tau": 3.263,
+          "pass": false
+        },
+        {
+          "turn": 6,
+          "action": "ROTATE(P2, Y, 11.5000)",
+          "over_tolerance_mm": 58.2,
+          "over_tau": 3.257,
+          "pass": false
+        },
+        {
+          "turn": 7,
+          "action": "ROTATE(P1, Y, -15.0000)",
+          "over_tolerance_mm": 56.4,
+          "over_tau": 3.184,
+          "pass": false
+        },
+        {
+          "turn": 8,
+          "action": "ROTATE(P2, Y, 12.2500)",
+          "over_tolerance_mm": 58.5,
+          "over_tau": 3.266,
+          "pass": false
+        },
+        {
+          "turn": 9,
+          "action": "ROTATE(P1, Y, -12.0000)",
+          "over_tolerance_mm": 56.4,
+          "over_tau": 3.184,
+          "pass": false
+        },
+        {
+          "turn": 10,
+          "action": "SCALE(P1, Z, 1.200000)",
+          "over_tolerance_mm": 56.4,
+          "over_tau": 3.184,
+          "pass": false
+        },
+        {
+          "turn": 11,
+          "action": "ROTATE(P1, Y, -11.5000)",
+          "over_tolerance_mm": 56.4,
+          "over_tau": 3.184,
+          "pass": false
+        }
+      ]
+    },
+    {
+      "slot": "10638_ctrl_scale_0",
+      "id": "10638_ctrl_scale_0",
+      "fault_type": "scale",
+      "ground_truth": "SCALE(P1, X, 0.739679)",
+      "tau_mm": 22.5,
+      "initial_deviation_mm": 331.2,
+      "passed": true,
+      "iterations": 1,
+      "final_over_tolerance_mm": -18.422,
+      "final_over_tau": 0.18,
+      "closest_over_tau": 0.18,
+      "seconds": 56.6,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "SCALE(P1, X, 0.742857)",
+          "over_tolerance_mm": -18.4,
+          "over_tau": 0.18,
+          "pass": true
+        },
+        {
+          "turn": 2,
+          "action": "SCALE(P1, X, 0.742857)",
+          "over_tolerance_mm": -18.4,
+          "over_tau": 0.18,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "slot": "10849_ctrl_translate_0",
+      "id": "10849_ctrl_translate_0",
+      "fault_type": "translate",
+      "ground_truth": "TRANSLATE(P0, X, -0.08517)",
+      "tau_mm": 25.1,
+      "initial_deviation_mm": 85.2,
+      "passed": false,
+      "iterations": 10,
+      "final_over_tolerance_mm": 69.018,
+      "final_over_tau": 3.752,
+      "closest_over_tau": 3.49,
+      "seconds": 329.1,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "TRANSLATE(P0, Y, 0.15000)",
+          "over_tolerance_mm": 147.4,
+          "over_tau": 6.879,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "TRANSLATE(P0, Y, 0.08000)",
+          "over_tolerance_mm": 91.8,
+          "over_tau": 4.66,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "TRANSLATE(P0, Y, 0.04000)",
+          "over_tolerance_mm": 69.0,
+          "over_tau": 3.752,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "TRANSLATE(P0, Y, 0.03000)",
+          "over_tolerance_mm": 65.2,
+          "over_tau": 3.601,
+          "pass": false
+        },
+        {
+          "turn": 5,
+          "action": "TRANSLATE(P0, Y, 0.05000)",
+          "over_tolerance_mm": 73.7,
+          "over_tau": 3.938,
+          "pass": false
+        },
+        {
+          "turn": 6,
+          "action": "TRANSLATE(P0, Y, 0.04500)",
+          "over_tolerance_mm": 71.2,
+          "over_tau": 3.841,
+          "pass": false
+        },
+        {
+          "turn": 7,
+          "action": "TRANSLATE(P0, Y, -0.04500)",
+          "over_tolerance_mm": 71.2,
+          "over_tau": 3.841,
+          "pass": false
+        },
+        {
+          "turn": 8,
+          "action": "TRANSLATE(P0, Y, 0.02000)",
+          "over_tolerance_mm": 62.4,
+          "over_tau": 3.489,
+          "pass": false
+        },
+        {
+          "turn": 9,
+          "action": "TRANSLATE(P0, Y, 0.03500)",
+          "over_tolerance_mm": 67.0,
+          "over_tau": 3.672,
+          "pass": false
+        },
+        {
+          "turn": 10,
+          "action": "TRANSLATE(P0, Y, 0.04200)",
+          "over_tolerance_mm": 69.9,
+          "over_tau": 3.787,
+          "pass": false
+        },
+        {
+          "turn": 11,
+          "action": "TRANSLATE(P0, Y, 0.04000)",
+          "over_tolerance_mm": 69.0,
+          "over_tau": 3.752,
+          "pass": false
+        }
+      ]
+    },
+    {
+      "slot": "12050_ctrl_rotate_0",
+      "id": "12050_ctrl_rotate_0",
+      "fault_type": "rotate",
+      "ground_truth": "ROTATE(P0, X, -23.0027)",
+      "tau_mm": 11.9,
+      "initial_deviation_mm": 45.3,
+      "passed": true,
+      "iterations": 3,
+      "final_over_tolerance_mm": -7.964,
+      "final_over_tau": 0.333,
+      "closest_over_tau": 0.33,
+      "seconds": 445.9,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "ROTATE(P0, X, -30.0000)",
+          "over_tolerance_mm": 1.9,
+          "over_tau": 1.162,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "ROTATE(P0, Y, -30.0000)",
+          "over_tolerance_mm": 37.2,
+          "over_tau": 4.116,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "ROTATE(P0, X, -21.0000)",
+          "over_tolerance_mm": -8.0,
+          "over_tau": 0.333,
+          "pass": true
+        },
+        {
+          "turn": 4,
+          "action": "ROTATE(P0, X, -21.0000)",
+          "over_tolerance_mm": -8.0,
+          "over_tau": 0.333,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "slot": "10586_ctrl_translate_0",
+      "id": "10586_ctrl_translate_0",
+      "fault_type": "translate",
+      "ground_truth": "TRANSLATE(P2, Y, -0.14191)",
+      "tau_mm": 23.2,
+      "initial_deviation_mm": 141.9,
+      "passed": false,
+      "iterations": 10,
+      "final_over_tolerance_mm": 139.349,
+      "final_over_tau": 7.018,
+      "closest_over_tau": 6.13,
+      "seconds": 1097.0,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "TRANSLATE(P2, Z, 0.11000)",
+          "over_tolerance_mm": 156.4,
+          "over_tau": 7.754,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "TRANSLATE(P1, Z, -0.11000)",
+          "over_tolerance_mm": 118.8,
+          "over_tau": 6.128,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "ROTATE(P2, Y, -15.0000)",
+          "over_tolerance_mm": 123.6,
+          "over_tau": 6.34,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "SCALE(P1, X, 0.924500)",
+          "over_tolerance_mm": 118.8,
+          "over_tau": 6.128,
+          "pass": false
+        },
+        {
+          "turn": 5,
+          "action": "ROTATE(P2, Y, 32.5000)",
+          "over_tolerance_mm": 139.3,
+          "over_tau": 7.018,
+          "pass": false
+        },
+        {
+          "turn": 6,
+          "action": "ROTATE(P2, Y, -32.5000)",
+          "over_tolerance_mm": 139.3,
+          "over_tau": 7.018,
+          "pass": false
+        },
+        {
+          "turn": 7,
+          "action": "ROTATE(P1, Y, 32.5000)",
+          "over_tolerance_mm": 118.8,
+          "over_tau": 6.128,
+          "pass": false
+        },
+        {
+          "turn": 8,
+          "action": "TRANSLATE(P2, Z, 0.12000)",
+          "over_tolerance_mm": 162.7,
+          "over_tau": 8.025,
+          "pass": false
+        },
+        {
+          "turn": 9,
+          "action": "ROTATE(P2, Y, -30.0000)",
+          "over_tolerance_mm": 136.6,
+          "over_tau": 6.9,
+          "pass": false
+        },
+        {
+          "turn": 10,
+          "action": "ROTATE(P2, Y, -32.4500)",
+          "over_tolerance_mm": 139.3,
+          "over_tau": 7.015,
+          "pass": false
+        },
+        {
+          "turn": 11,
+          "action": "ROTATE(P2, Y, -32.5000)",
+          "over_tolerance_mm": 139.3,
+          "over_tau": 7.018,
+          "pass": false
+        }
+      ]
+    },
+    {
+      "slot": "11231_ctrl_translate_0",
+      "id": "11231_ctrl_translate_0",
+      "fault_type": "translate",
+      "ground_truth": "TRANSLATE(P1, X, 0.18806)",
+      "tau_mm": 22.8,
+      "initial_deviation_mm": 188.1,
+      "passed": false,
+      "iterations": 10,
+      "final_over_tolerance_mm": 170.506,
+      "final_over_tau": 8.489,
+      "closest_over_tau": 5.32,
+      "seconds": 743.7,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "SCALE(P2, X, 0.891000)",
+          "over_tolerance_mm": 165.3,
+          "over_tau": 8.26,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "TRANSLATE(P1, X, 0.06700)",
+          "over_tolerance_mm": 98.3,
+          "over_tau": 5.318,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "TRANSLATE(P1, Z, 0.06700)",
+          "over_tolerance_mm": 176.9,
+          "over_tau": 8.769,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "TRANSLATE(P1, Z, 0.08600)",
+          "over_tolerance_mm": 184.0,
+          "over_tau": 9.083,
+          "pass": false
+        },
+        {
+          "turn": 5,
+          "action": "TRANSLATE(P1, Z, 0.08000)",
+          "over_tolerance_mm": 181.6,
+          "over_tau": 8.977,
+          "pass": false
+        },
+        {
+          "turn": 6,
+          "action": "TRANSLATE(P1, Z, 0.10000)",
+          "over_tolerance_mm": 190.2,
+          "over_tau": 9.356,
+          "pass": false
+        },
+        {
+          "turn": 7,
+          "action": "TRANSLATE(P1, Z, 0.09000)",
+          "over_tolerance_mm": 185.7,
+          "over_tau": 9.158,
+          "pass": false
+        },
+        {
+          "turn": 8,
+          "action": "SCALE(P2, X, 0.891000)",
+          "over_tolerance_mm": 165.3,
+          "over_tau": 8.26,
+          "pass": false
+        },
+        {
+          "turn": 9,
+          "action": "TRANSLATE(P1, Z, 0.08800)",
+          "over_tolerance_mm": 184.9,
+          "over_tau": 9.12,
+          "pass": false
+        },
+        {
+          "turn": 10,
+          "action": "TRANSLATE(P1, X, 0.06700)",
+          "over_tolerance_mm": 98.3,
+          "over_tau": 5.318,
+          "pass": false
+        },
+        {
+          "turn": 11,
+          "action": "ROTATE(P1, Y, -13.0000)",
+          "over_tolerance_mm": 170.5,
+          "over_tau": 8.489,
+          "pass": false
+        }
+      ]
+    },
+    {
+      "slot": "11304_ctrl_rotate_0",
+      "id": "11304_ctrl_rotate_0",
+      "fault_type": "rotate",
+      "ground_truth": "ROTATE(P0, X, 29.4375)",
+      "tau_mm": 21.3,
+      "initial_deviation_mm": 127.8,
+      "passed": true,
+      "iterations": 4,
+      "final_over_tolerance_mm": -18.868,
+      "final_over_tau": 0.116,
+      "closest_over_tau": 0.12,
+      "seconds": 60.7,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "ROTATE(P0, Y, -15.0000)",
+          "over_tolerance_mm": 122.4,
+          "over_tau": 6.734,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "ROTATE(P0, Y, 30.0000)",
+          "over_tolerance_mm": 89.3,
+          "over_tau": 5.186,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "ROTATE(P0, Y, 15.0000)",
+          "over_tolerance_mm": 94.7,
+          "over_tau": 5.437,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "ROTATE(P0, X, 30.0000)",
+          "over_tolerance_mm": -18.9,
+          "over_tau": 0.116,
+          "pass": true
+        },
+        {
+          "turn": 5,
+          "action": "ROTATE(P0, X, 30.0000)",
+          "over_tolerance_mm": -18.9,
+          "over_tau": 0.116,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "slot": "12248_ctrl_scale_0",
+      "id": "12248_ctrl_scale_0",
+      "fault_type": "scale",
+      "ground_truth": "SCALE(P0, Y, 0.648390)",
+      "tau_mm": 13.9,
+      "initial_deviation_mm": 159.8,
+      "passed": false,
+      "iterations": 10,
+      "final_over_tolerance_mm": 145.971,
+      "final_over_tau": 11.521,
+      "closest_over_tau": 11.52,
+      "seconds": 1787.3,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "TRANSLATE(P1, Y, -0.06000)",
+          "over_tolerance_mm": 146.0,
+          "over_tau": 11.521,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "SCALE(P1, Y, 0.942300)",
+          "over_tolerance_mm": 146.0,
+          "over_tau": 11.521,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "TRANSLATE(P1, X, -0.06000)",
+          "over_tolerance_mm": 146.0,
+          "over_tau": 11.521,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "TRANSLATE(P1, Z, 0.06000)",
+          "over_tolerance_mm": 146.0,
+          "over_tau": 11.521,
+          "pass": false
+        },
+        {
+          "turn": 5,
+          "action": "SCALE(P1, Y, 0.765300)",
+          "over_tolerance_mm": 146.0,
+          "over_tau": 11.521,
+          "pass": false
+        },
+        {
+          "turn": 6,
+          "action": "TRANSLATE(P1, Z, 0.08000)",
+          "over_tolerance_mm": 146.0,
+          "over_tau": 11.521,
+          "pass": false
+        },
+        {
+          "turn": 7,
+          "action": "ROTATE(P1, Y, -5.0000)",
+          "over_tolerance_mm": 146.0,
+          "over_tau": 11.521,
+          "pass": false
+        },
+        {
+          "turn": 8,
+          "action": "SCALE(P1, X, 0.915500)",
+          "over_tolerance_mm": 146.0,
+          "over_tau": 11.521,
+          "pass": false
+        },
+        {
+          "turn": 9,
+          "action": "TRANSLATE(P1, Z, 0.08000)",
+          "over_tolerance_mm": 146.0,
+          "over_tau": 11.521,
+          "pass": false
+        },
+        {
+          "turn": 10,
+          "action": "TRANSLATE(P1, X, 0.06000)",
+          "over_tolerance_mm": 146.0,
+          "over_tau": 11.521,
+          "pass": false
+        },
+        {
+          "turn": 11,
+          "action": "SCALE(P1, Z, 0.549000)",
+          "over_tolerance_mm": 146.0,
+          "over_tau": 11.521,
+          "pass": false
+        }
+      ]
+    },
+    {
+      "slot": "12250_ctrl_scale_0",
+      "id": "12250_ctrl_scale_0",
+      "fault_type": "scale",
+      "ground_truth": "SCALE(P1, Y, 0.733483)",
+      "tau_mm": 29.1,
+      "initial_deviation_mm": 190.9,
+      "passed": true,
+      "iterations": 1,
+      "final_over_tolerance_mm": -27.287,
+      "final_over_tau": 0.061,
+      "closest_over_tau": 0.06,
+      "seconds": 162.6,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "SCALE(P1, Y, 0.731000)",
+          "over_tolerance_mm": -27.3,
+          "over_tau": 0.061,
+          "pass": true
+        },
+        {
+          "turn": 2,
+          "action": "SCALE(P1, Y, 0.731000)",
+          "over_tolerance_mm": -27.3,
+          "over_tau": 0.061,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "slot": "10612_ctrl_scale_0",
+      "id": "10612_ctrl_scale_0",
+      "fault_type": "scale",
+      "ground_truth": "SCALE(P2, Y, 0.771633)",
+      "tau_mm": 24.9,
+      "initial_deviation_mm": 168.1,
+      "passed": true,
+      "iterations": 1,
+      "final_over_tolerance_mm": -23.875,
+      "final_over_tau": 0.039,
+      "closest_over_tau": 0.04,
+      "seconds": 118.5,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "SCALE(P2, Y, 0.770300)",
+          "over_tolerance_mm": -23.9,
+          "over_tau": 0.039,
+          "pass": true
+        },
+        {
+          "turn": 2,
+          "action": "SCALE(P2, Y, 0.770300)",
+          "over_tolerance_mm": -23.9,
+          "over_tau": 0.039,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "slot": "10627_ctrl_rotate_0",
+      "id": "10627_ctrl_rotate_0",
+      "fault_type": "rotate",
+      "ground_truth": "ROTATE(P2, Z, -43.8612)",
+      "tau_mm": 14.5,
+      "initial_deviation_mm": 170.4,
+      "passed": true,
+      "iterations": 1,
+      "final_over_tolerance_mm": -9.951,
+      "final_over_tau": 0.313,
+      "closest_over_tau": 0.31,
+      "seconds": 21.0,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "ROTATE(P2, Z, -45.0000)",
+          "over_tolerance_mm": -10.0,
+          "over_tau": 0.313,
+          "pass": true
+        },
+        {
+          "turn": 2,
+          "action": "ROTATE(P2, Z, -45.0000)",
+          "over_tolerance_mm": -10.0,
+          "over_tau": 0.313,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "slot": "10655_ctrl_rotate_0",
+      "id": "10655_ctrl_rotate_0",
+      "fault_type": "rotate",
+      "ground_truth": "ROTATE(P1, X, -26.7650)",
+      "tau_mm": 25.7,
+      "initial_deviation_mm": 363.5,
+      "passed": true,
+      "iterations": 2,
+      "final_over_tolerance_mm": -1.516,
+      "final_over_tau": 0.941,
+      "closest_over_tau": 0.94,
+      "seconds": 107.7,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "ROTATE(P1, X, -30.0000)",
+          "over_tolerance_mm": 18.6,
+          "over_tau": 1.725,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "ROTATE(P1, X, -25.0000)",
+          "over_tolerance_mm": -1.5,
+          "over_tau": 0.941,
+          "pass": true
+        },
+        {
+          "turn": 3,
+          "action": "ROTATE(P1, X, -25.0000)",
+          "over_tolerance_mm": -1.5,
+          "over_tau": 0.941,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "slot": "11299_ctrl_translate_0",
+      "id": "11299_ctrl_translate_0",
+      "fault_type": "translate",
+      "ground_truth": "TRANSLATE(P1, X, -0.12826)",
+      "tau_mm": 24.7,
+      "initial_deviation_mm": 128.3,
+      "passed": false,
+      "iterations": 4,
+      "final_over_tolerance_mm": 53.524,
+      "final_over_tau": 3.164,
+      "closest_over_tau": 3.16,
+      "seconds": 1523.9,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "TRANSLATE(P2, X, 0.05000)",
+          "over_tolerance_mm": 103.5,
+          "over_tau": 5.185,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "TRANSLATE(P1, X, -0.05000)",
+          "over_tolerance_mm": 53.5,
+          "over_tau": 3.164,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "SCALE(P2, X, 0.901960)",
+          "over_tolerance_mm": 103.5,
+          "over_tau": 5.185,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "TRANSLATE(P1, X, -0.05000)",
+          "over_tolerance_mm": 53.5,
+          "over_tau": 3.164,
+          "pass": false
+        },
+        {
+          "turn": 5,
+          "action": "TRANSLATE(P1, X, -0.05000)",
+          "over_tolerance_mm": 53.5,
+          "over_tau": 3.164,
+          "pass": false
+        }
+      ]
+    },
+    {
+      "slot": "11712_ctrl_scale_0",
+      "id": "11712_ctrl_scale_0",
+      "fault_type": "scale",
+      "ground_truth": "SCALE(P1, X, 0.704582)",
+      "tau_mm": 22.5,
+      "initial_deviation_mm": 189.1,
+      "passed": true,
+      "iterations": 3,
+      "final_over_tolerance_mm": -17.272,
+      "final_over_tau": 0.233,
+      "closest_over_tau": 0.23,
+      "seconds": 41.3,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "ROTATE(P1, Y, -10.0000)",
+          "over_tolerance_mm": 179.1,
+          "over_tau": 8.949,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "ROTATE(P1, Y, 10.0000)",
+          "over_tolerance_mm": 178.7,
+          "over_tau": 8.933,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "SCALE(P1, X, 0.712800)",
+          "over_tolerance_mm": -17.3,
+          "over_tau": 0.233,
+          "pass": true
+        },
+        {
+          "turn": 4,
+          "action": "SCALE(P1, X, 0.712800)",
+          "over_tolerance_mm": -17.3,
+          "over_tau": 0.233,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "slot": "10373_ctrl_rotate_0",
+      "id": "10373_ctrl_rotate_0",
+      "fault_type": "rotate",
+      "ground_truth": "ROTATE(P0, Y, -35.2125)",
+      "tau_mm": 20.8,
+      "initial_deviation_mm": 167.5,
+      "passed": true,
+      "iterations": 6,
+      "final_over_tolerance_mm": -19.786,
+      "final_over_tau": 0.049,
+      "closest_over_tau": 0.05,
+      "seconds": 71.1,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "ROTATE(P0, Y, -30.0000)",
+          "over_tolerance_mm": 4.4,
+          "over_tau": 1.21,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "ROTATE(P0, Y, -15.0000)",
+          "over_tolerance_mm": 76.4,
+          "over_tau": 4.669,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "ROTATE(P0, Y, -25.0000)",
+          "over_tolerance_mm": 28.5,
+          "over_tau": 2.368,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "ROTATE(P0, Y, -20.0000)",
+          "over_tolerance_mm": 52.5,
+          "over_tau": 3.522,
+          "pass": false
+        },
+        {
+          "turn": 5,
+          "action": "ROTATE(P0, Y, -45.0000)",
+          "over_tolerance_mm": 26.4,
+          "over_tau": 2.27,
+          "pass": false
+        },
+        {
+          "turn": 6,
+          "action": "ROTATE(P0, Y, -35.0000)",
+          "over_tolerance_mm": -19.8,
+          "over_tau": 0.049,
+          "pass": true
+        },
+        {
+          "turn": 7,
+          "action": "ROTATE(P0, Y, -35.0000)",
+          "over_tolerance_mm": -19.8,
+          "over_tau": 0.049,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "slot": "10797_ctrl_rotate_0",
+      "id": "10797_ctrl_rotate_0",
+      "fault_type": "rotate",
+      "ground_truth": "ROTATE(P1, X, 22.8324)",
+      "tau_mm": 26.1,
+      "initial_deviation_mm": 145.6,
+      "passed": false,
+      "iterations": 1,
+      "final_over_tolerance_mm": 19.892,
+      "final_over_tau": 1.763,
+      "closest_over_tau": 1.76,
+      "seconds": 19.4,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "ROTATE(P1, X, 30.0000)",
+          "over_tolerance_mm": 19.9,
+          "over_tau": 1.763,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "ROTATE(P1, X, 30.0000)",
+          "over_tolerance_mm": 19.9,
+          "over_tau": 1.763,
+          "pass": false
+        }
+      ]
+    },
+    {
+      "slot": "10905_ctrl_translate_0",
+      "id": "10905_ctrl_translate_0",
+      "fault_type": "translate",
+      "ground_truth": "TRANSLATE(P0, Z, 0.17837)",
+      "tau_mm": 17.4,
+      "initial_deviation_mm": 178.4,
+      "passed": false,
+      "iterations": 9,
+      "final_over_tolerance_mm": 401.02,
+      "final_over_tau": 24.111,
+      "closest_over_tau": 4.13,
+      "seconds": 354.1,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "TRANSLATE(P0, Z, 0.25000)",
+          "over_tolerance_mm": 54.3,
+          "over_tau": 4.128,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "TRANSLATE(P0, Y, 0.20000)",
+          "over_tolerance_mm": 250.6,
+          "over_tau": 15.444,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "TRANSLATE(P0, Z, -0.25000)",
+          "over_tolerance_mm": 411.0,
+          "over_tau": 24.687,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "TRANSLATE(P0, Z, -0.20000)",
+          "over_tolerance_mm": 361.0,
+          "over_tau": 21.806,
+          "pass": false
+        },
+        {
+          "turn": 5,
+          "action": "TRANSLATE(P0, Z, -0.23000)",
+          "over_tolerance_mm": 391.0,
+          "over_tau": 23.535,
+          "pass": false
+        },
+        {
+          "turn": 6,
+          "action": "TRANSLATE(P0, Z, -0.21000)",
+          "over_tolerance_mm": 371.0,
+          "over_tau": 22.382,
+          "pass": false
+        },
+        {
+          "turn": 7,
+          "action": "TRANSLATE(P0, Z, -0.22000)",
+          "over_tolerance_mm": 381.0,
+          "over_tau": 22.958,
+          "pass": false
+        },
+        {
+          "turn": 8,
+          "action": "TRANSLATE(P0, Z, -0.29000)",
+          "over_tolerance_mm": 451.0,
+          "over_tau": 26.992,
+          "pass": false
+        },
+        {
+          "turn": 9,
+          "action": "TRANSLATE(P0, X, 0.23000)",
+          "over_tolerance_mm": 273.7,
+          "over_tau": 16.774,
+          "pass": false
+        },
+        {
+          "turn": 10,
+          "action": "TRANSLATE(P0, Z, -0.24000)",
+          "over_tolerance_mm": 401.0,
+          "over_tau": 24.111,
+          "pass": false
+        }
+      ]
+    },
+    {
+      "slot": "10944_ctrl_scale_0",
+      "id": "10944_ctrl_scale_0",
+      "fault_type": "scale",
+      "ground_truth": "SCALE(P0, Y, 0.709604)",
+      "tau_mm": 23.9,
+      "initial_deviation_mm": 341.5,
+      "passed": true,
+      "iterations": 4,
+      "final_over_tolerance_mm": -3.109,
+      "final_over_tau": 0.87,
+      "closest_over_tau": 0.87,
+      "seconds": 625.7,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "SCALE(P0, Y, 0.813400)",
+          "over_tolerance_mm": 98.2,
+          "over_tau": 5.11,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "SCALE(P0, Y, 0.741600)",
+          "over_tolerance_mm": 13.7,
+          "over_tau": 1.575,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "SCALE(P0, Y, 0.813397)",
+          "over_tolerance_mm": 98.2,
+          "over_tau": 5.11,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "SCALE(P0, Y, 0.727273)",
+          "over_tolerance_mm": -3.1,
+          "over_tau": 0.87,
+          "pass": true
+        },
+        {
+          "turn": 5,
+          "action": "SCALE(P0, Y, 0.727273)",
+          "over_tolerance_mm": -3.1,
+          "over_tau": 0.87,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "slot": "12054_ctrl_scale_0",
+      "id": "12054_ctrl_scale_0",
+      "fault_type": "scale",
+      "ground_truth": "SCALE(P0, X, 0.715502)",
+      "tau_mm": 29.2,
+      "initial_deviation_mm": 208.6,
+      "passed": true,
+      "iterations": 1,
+      "final_over_tolerance_mm": -28.121,
+      "final_over_tau": 0.038,
+      "closest_over_tau": 0.04,
+      "seconds": 92.7,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "SCALE(P0, X, 0.717000)",
+          "over_tolerance_mm": -28.1,
+          "over_tau": 0.038,
+          "pass": true
+        },
+        {
+          "turn": 2,
+          "action": "SCALE(P0, X, 0.717000)",
+          "over_tolerance_mm": -28.1,
+          "over_tau": 0.038,
+          "pass": true
+        }
+      ]
+    }
+  ],
+  "sharded_from": [
+    "one_error_g3_image_s0",
+    "one_error_g3_image_s1",
+    "one_error_g3_image_s2",
+    "one_error_g3_image_s3",
+    "one_error_g3_image_s4",
+    "one_error_g3_image_s5"
+  ]
+}

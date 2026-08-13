@@ -1,0 +1,80 @@
+<title>What Predicts a Repair</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<style>
+:root { --ground:#F4F2ED; --surface:#FCFCFB; --ink:#1A1B19; --muted:#6C6F68; --rule:#E2DFD7;
+  --thr:#9C3328; --s0:#1F6FB2; --s1:#C2620E; --s2:#5B4B8A; --heat:31,111,178;
+  --mono: ui-monospace,"SFMono-Regular","JetBrains Mono",Menlo,Consolas,monospace;
+  --serif:"Iowan Old Style",Charter,Georgia,"Times New Roman",serif; }
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --ground:#131412; --surface:#1A1A19; --ink:#ECEAE3; --muted:#9A9E95; --rule:#2C2F2A;
+  --thr:#E08A7E; --s0:#2E86C8; --s1:#CF7020; --s2:#7E6BC0; --heat:46,134,200; } }
+:root[data-theme="dark"]{ --ground:#131412; --surface:#1A1A19; --ink:#ECEAE3; --muted:#9A9E95;
+  --rule:#2C2F2A; --thr:#E08A7E; --s0:#2E86C8; --s1:#CF7020; --s2:#7E6BC0; --heat:46,134,200; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--serif);line-height:1.6;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:900px;margin:0 auto;padding:44px 22px 72px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);display:block;margin-bottom:10px}
+h1{font-family:var(--mono);font-size:clamp(23px,3.2vw,32px);line-height:1.15;margin:0 0 14px;
+  font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+h2{font-family:var(--mono);font-size:14px;font-weight:600;margin:38px 0 4px}
+p{margin:0 0 14px;max-width:68ch} .lede{font-size:16px;color:var(--muted)}
+.cap{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin:0 0 14px}
+table{border-collapse:separate;border-spacing:3px;font-family:var(--mono);font-size:12.5px;
+  font-variant-numeric:tabular-nums;margin:6px 0 4px}
+th{font-weight:600;font-size:11px;color:var(--muted);text-align:right;padding:4px 9px;
+  letter-spacing:.04em}
+thead th{text-align:center}
+td{background:rgba(var(--heat),var(--a,0));border-radius:3px;padding:8px 12px;text-align:center;
+  min-width:74px}
+td b{font-size:14px} .pct{display:block;font-size:9.5px;color:var(--muted)}
+td.tot{background:none;border-left:1px solid var(--rule);color:var(--muted)}
+td.na{background:none;color:var(--muted)}
+svg{width:100%;height:auto;display:block;overflow:visible;font-family:var(--mono)}
+.grp{font-size:11.5px;font-weight:600;fill:var(--ink)}
+.rlab{font-size:11px;fill:var(--muted)}
+.val{font-size:10.5px;fill:var(--muted)}
+.tick{font-size:9.5px;fill:var(--muted);text-anchor:middle}
+.vg{stroke:var(--rule);stroke-width:1}
+.target{stroke:var(--thr);stroke-width:1.5;stroke-dasharray:4 3}
+.rng{stroke-width:2;opacity:.4} .pt{stroke:var(--surface);stroke-width:1.5}
+.rng.s0,.pt.s0{stroke:var(--s0)} circle.s0{fill:var(--s0)}
+.rng.s1,.pt.s1{stroke:var(--s1)} circle.s1{fill:var(--s1)}
+.rng.s2,.pt.s2{stroke:var(--s2)} circle.s2{fill:var(--s2)}
+.note{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--thr);
+  border-radius:3px;padding:13px 15px;margin:22px 0} .note p{margin:0;font-size:14px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<div class="wrap">
+  <span class="eyebrow">30 problems per condition · 10 per fault type · τ = 1.5%</span>
+  <h1>Which faults get fixed, and why</h1>
+  <p class="lede">Two views of the same 270 episodes. The first says success depends more on the kind
+  of fault — and the observation channel — than on which model you pick. The second says why.</p>
+
+  <h2>1 · Repairs by fault type</h2>
+  <p class="cap">solved out of 10 · darker is better</p>
+  <table><thead><tr><th></th><th>translate</th><th>rotate</th><th>scale</th><th>overall</th></tr></thead>
+  <tbody><tr><th>robotics-er-2 · image</th><td style="--a:0.21"><b>3</b>/10<span class="pct">30%</span></td><td style="--a:0.56"><b>10</b>/10<span class="pct">100%</span></td><td style="--a:0.36"><b>6</b>/10<span class="pct">60%</span></td><td class="tot">19/30</td></tr><tr><th>gemini-3.1-pro · image</th><td style="--a:0.06"><b>0</b>/10<span class="pct">0%</span></td><td style="--a:0.41"><b>7</b>/10<span class="pct">70%</span></td><td style="--a:0.51"><b>9</b>/10<span class="pct">90%</span></td><td class="tot">16/30</td></tr><tr><th>robotics-er-2 · text</th><td style="--a:0.26"><b>4</b>/10<span class="pct">40%</span></td><td style="--a:0.06"><b>0</b>/10<span class="pct">0%</span></td><td style="--a:0.36"><b>6</b>/10<span class="pct">60%</span></td><td class="tot">10/30</td></tr><tr><th>gemini-3.1-pro · text</th><td style="--a:0.36"><b>6</b>/10<span class="pct">60%</span></td><td style="--a:0.16"><b>2</b>/10<span class="pct">20%</span></td><td style="--a:0.36"><b>6</b>/10<span class="pct">60%</span></td><td class="tot">14/30</td></tr><tr><th>Qwen-8B · image</th><td style="--a:0.06"><b>0</b>/10<span class="pct">0%</span></td><td style="--a:0.06"><b>0</b>/10<span class="pct">0%</span></td><td style="--a:0.06"><b>0</b>/10<span class="pct">0%</span></td><td class="tot">0/30</td></tr><tr><th>Qwen-8B · image + fault scale</th><td style="--a:0.11"><b>1</b>/10<span class="pct">10%</span></td><td style="--a:0.06"><b>0</b>/10<span class="pct">0%</span></td><td style="--a:0.06"><b>0</b>/10<span class="pct">0%</span></td><td class="tot">1/30</td></tr><tr><th>Qwen-8B · text</th><td style="--a:0.06"><b>0</b>/10<span class="pct">0%</span></td><td style="--a:0.06"><b>0</b>/10<span class="pct">0%</span></td><td style="--a:0.06"><b>0</b>/10<span class="pct">0%</span></td><td class="tot">0/30</td></tr></tbody></table>
+  <p>robotics-er-2 solves <b>every</b> rotation from images and <b>none</b> from text. gemini-3.1-pro
+  is the mirror image on translation — 0/10 — while taking 9/10 on scale. The two frontier models
+  have different competencies, not different amounts of one competence.</p>
+
+  <h2>2 · How big a correction each model actually proposes</h2>
+  <p class="cap">emitted ÷ required magnitude, on attempts of the correct action type · dot = median,
+  bar = 10th–90th percentile · 1.0× is exactly right</p>
+  <svg viewBox="0 0 560 626" role="img" aria-label="Emitted over required magnitude by model and fault type">
+    <line x1="178.0" y1="0" x2="178.0" y2="600" class="vg"/><text x="178.0" y="616" class="tick">0×</text><line x1="267.0" y1="0" x2="267.0" y2="600" class="vg"/><text x="267.0" y="616" class="tick">0.5×</text><line x1="356.0" y1="0" x2="356.0" y2="600" class="target"/><text x="356.0" y="616" class="tick">1×</text><line x1="445.0" y1="0" x2="445.0" y2="600" class="vg"/><text x="445.0" y="616" class="tick">1.5×</text><line x1="534.0" y1="0" x2="534.0" y2="600" class="vg"/><text x="534.0" y="616" class="tick">2×</text><text x="0" y="16" class="grp">robotics-er-2</text><text x="14" y="37" class="rlab">translate</text><line x1="241.4" y1="33" x2="503.0" y2="33" class="rng s0"/><circle cx="312.5" cy="33" r="5" class="pt s0"><title>robotics-er-2 · translate: median 0.76× required (n=52, p10 0.36, p90 1.83)</title></circle><text x="511.0" y="37" class="val">0.76×</text><text x="14" y="67" class="rlab">rotate</text><line x1="330.9" y1="63" x2="477.3" y2="63" class="rng s1"/><circle cx="364.2" cy="63" r="5" class="pt s1"><title>robotics-er-2 · rotate: median 1.05× required (n=42, p10 0.86, p90 1.68)</title></circle><text x="485.3" y="67" class="val">1.05×</text><text x="14" y="97" class="rlab">scale</text><line x1="354.6" y1="93" x2="424.2" y2="93" class="rng s2"/><circle cx="373.7" cy="93" r="5" class="pt s2"><title>robotics-er-2 · scale: median 1.10× required (n=37, p10 0.99, p90 1.38)</title></circle><text x="432.2" y="97" class="val">1.10×</text><text x="0" y="136" class="grp">gemini-3.1-pro</text><text x="14" y="157" class="rlab">translate</text><line x1="241.4" y1="153" x2="417.5" y2="153" class="rng s0"/><circle cx="272.0" cy="153" r="5" class="pt s0"><title>gemini-3.1-pro · translate: median 0.53× required (n=41, p10 0.36, p90 1.35)</title></circle><text x="425.5" y="157" class="val">0.53×</text><text x="14" y="187" class="rlab">rotate</text><line x1="290.6" y1="183" x2="410.1" y2="183" class="rng s1"/><circle cx="344.3" cy="183" r="5" class="pt s1"><title>gemini-3.1-pro · rotate: median 0.93× required (n=45, p10 0.63, p90 1.30)</title></circle><text x="418.1" y="187" class="val">0.93×</text><text x="14" y="217" class="rlab">scale</text><line x1="328.7" y1="213" x2="382.0" y2="213" class="rng s2"/><circle cx="356.4" cy="213" r="5" class="pt s2"><title>gemini-3.1-pro · scale: median 1.00× required (n=32, p10 0.85, p90 1.15)</title></circle><text x="390.0" y="217" class="val">1.00×</text><text x="0" y="256" class="grp">gemini-3.1-pro · text</text><text x="14" y="277" class="rlab">translate</text><line x1="241.4" y1="273" x2="534.0" y2="273" class="rng s0"/><circle cx="343.1" cy="273" r="5" class="pt s0"><title>gemini-3.1-pro · text · translate: median 0.93× required (n=58, p10 0.36, p90 2.40)</title></circle><text x="542.0" y="277" class="val">0.93×</text><text x="14" y="307" class="rlab">rotate</text><line x1="346.9" y1="303" x2="534.0" y2="303" class="rng s1"/><circle cx="481.3" cy="303" r="5" class="pt s1"><title>gemini-3.1-pro · text · rotate: median 1.70× required (n=22, p10 0.95, p90 2.63)</title></circle><text x="542.0" y="307" class="val">1.70×</text><text x="14" y="337" class="rlab">scale</text><line x1="355.9" y1="333" x2="396.0" y2="333" class="rng s2"/><circle cx="356.0" cy="333" r="5" class="pt s2"><title>gemini-3.1-pro · text · scale: median 1.00× required (n=20, p10 1.00, p90 1.22)</title></circle><text x="404.0" y="337" class="val">1.00×</text><text x="0" y="376" class="grp">Qwen-8B baseline</text><text x="14" y="397" class="rlab">translate</text><line x1="198.0" y1="393" x2="328.5" y2="393" class="rng s0"/><circle cx="221.3" cy="393" r="5" class="pt s0"><title>Qwen-8B baseline · translate: median 0.24× required (n=47, p10 0.11, p90 0.85)</title></circle><text x="336.5" y="397" class="val">0.24×</text><text x="14" y="427" class="rlab">rotate</text><line x1="192.1" y1="423" x2="216.2" y2="423" class="rng s1"/><circle cx="200.9" cy="423" r="5" class="pt s1"><title>Qwen-8B baseline · rotate: median 0.13× required (n=37, p10 0.08, p90 0.21)</title></circle><text x="224.2" y="427" class="val">0.13×</text><text x="14" y="457" class="rlab">scale</text><line x1="390.2" y1="453" x2="425.1" y2="453" class="rng s2"/><circle cx="411.5" cy="453" r="5" class="pt s2"><title>Qwen-8B baseline · scale: median 1.31× required (n=16, p10 1.19, p90 1.39)</title></circle><text x="433.1" y="457" class="val">1.31×</text><text x="0" y="496" class="grp">Qwen-8B + fault scale</text><text x="14" y="517" class="rlab">translate</text><line x1="217.9" y1="513" x2="534.0" y2="513" class="rng s0"/><circle cx="337.7" cy="513" r="5" class="pt s0"><title>Qwen-8B + fault scale · translate: median 0.90× required (n=53, p10 0.22, p90 2.04)</title></circle><text x="542.0" y="517" class="val">0.90×</text><text x="14" y="547" class="rlab">rotate</text><line x1="201.2" y1="543" x2="255.4" y2="543" class="rng s1"/><circle cx="218.6" cy="543" r="5" class="pt s1"><title>Qwen-8B + fault scale · rotate: median 0.23× required (n=22, p10 0.13, p90 0.43)</title></circle><text x="263.4" y="547" class="val">0.23×</text><text x="14" y="577" class="rlab">scale</text><line x1="312.9" y1="573" x2="372.9" y2="573" class="rng s2"/><circle cx="352.5" cy="573" r="5" class="pt s2"><title>Qwen-8B + fault scale · scale: median 0.98× required (n=6, p10 0.76, p90 1.10)</title></circle><text x="380.9" y="577" class="val">0.98×</text>
+  </svg>
+
+  <div class="note"><p><b>Magnitude accuracy predicts the outcome almost perfectly.</b> Order each
+  model's fault types by how close its median correction is to 1.0× and you recover the success
+  ordering: er 1.05×→10/10, 1.10×→6/10, 0.76×→3/10; g3 1.00×→9/10, 0.93×→7/10, 0.53×→0/10.
+  <b>Every model undershoots translation</b>, and translation is every model's weakest type on
+  images.</p></div>
+
+  <p>Qwen sits far left: 0.24× on translate and 0.13× on rotate — corrections four to eight times too
+  small. Stating the typical fault size fixes translate (0.24×→0.90×) and scale (1.31×→0.98×) but
+  barely touches rotate (0.13×→0.23×), and success stays at 1/30 — because sizing the correction is
+  only useful once the right part and axis have been chosen, which Qwen manages about half the time.</p>
+</div>

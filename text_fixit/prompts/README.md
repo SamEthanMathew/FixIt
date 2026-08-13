@@ -110,7 +110,9 @@ magnitude ranges, read from the instance), `$contract_block` (batch/stack contra
 
 | set | differs from `one_error` by | measured effect |
 |---|---|---|
-| `one_error` | — (baseline) | — |
+| `one_error` | — (baseline) | Qwen3-VL-8B **0/60** on `instances_std30` |
+| `one_error_scale` | a FAULT SCALE block stating the typical magnitude of each fault type, read from the instance's `magnitude_ranges`, plus that the repair is the same size in the opposite direction (reciprocal for scale). Deviation stays OFF. Nothing else differs. | running |
+| `one_error_dev` | three lines in WHAT YOU SEE telling the model the observation reports the remaining error in mm and the tolerance. Run with `--deviation on`, which adds `worst part off by N mm (tolerance M mm)` to the observation. Nothing else differs — verified by diff. | running |
 
 ### Known candidates, with prior evidence
 

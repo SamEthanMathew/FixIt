@@ -158,6 +158,9 @@ class GeminiAgent(Agent):
         self._system_tmpl = _load_set(self.prompt_set, "text")
         self._system_img_tmpl = _load_set(self.prompt_set, "image")
         self._step_tmpl = _load_set(self.prompt_set, "step")
+        # history="full" builds its own per-turn message; templating it keeps the WHOLE prompt in
+        # the prompt set instead of half of it living in Python.
+        self._obs_tmpl = _load_set(self.prompt_set, "obs")
         # The one_error sets are self-contained: no $contract_block, one action per turn.
         self._contract_tmpl = None
         if os.path.isfile(os.path.join(_PROMPT_DIR, "contract_batch.txt")):
@@ -254,13 +257,11 @@ class GeminiAgent(Agent):
         """A single turn's user message for history='full' (no re-injected history block -- the
         prior turns are already in the conversation)."""
         if budget_left <= 0:
-            note = "\nNo SIMULATE calls left - COMMIT now (your best attempt if none has passed)."
+            note = "No SIMULATE calls left - COMMIT now (your best attempt if none has passed)."
         else:
-            note = (f"\nSIMULATE calls remaining: {budget_left}. Keep simulating and refining until "
+            note = (f"SIMULATE calls remaining: {budget_left}. Keep simulating and refining until "
                     "one returns ALL PASS; do not commit before then.")
-        return (f"{obs['text']}{note}\n\nOutput your next action now "
-                "(one <think> block and one <act> block). Write the action as literal TEXT inside "
-                "the <act> tags - it is not a tool or function call.")
+        return self._obs_tmpl.safe_substitute(observation=obs["text"], commit_note=note)
 
     def act(self, ctx):
         env, obs = ctx["env"], ctx["obs"]

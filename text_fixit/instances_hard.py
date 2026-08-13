@@ -460,16 +460,23 @@ def main():
         rng = random.Random(args.seed)
         cpool = sorted(inv)
         rng.shuffle(cpool)
-        rows = []
+        rows, used = [], set()
         for ctype in CTYPES:
             got, k = 0, 0
             while got < args.per_type and k < len(cpool) * 6:
                 base = cpool[k % len(cpool)]
                 seed_i = args.seed + (k // len(cpool))
                 k += 1
+                # Prefer an UNUSED shape across the whole set, not just within this fault type.
+                # Restarting each type at the head of the pool would hand every type the same first
+                # N fridges, so a 30-instance set would rest on 10 shapes with everything correlated
+                # in threes. Only reuse once the pool is genuinely exhausted.
+                if base in used and len(used) < len(cpool):
+                    continue
                 rec = build_control(base, inv[base], split_of[base], seed_i, ctype, cid)
                 if rec:
                     rows.append(rec)
+                    used.add(base)
                     got += 1
                 else:
                     print(f"  drop easy {base} {ctype} seed{seed_i} (gate)")

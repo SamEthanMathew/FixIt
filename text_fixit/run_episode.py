@@ -121,6 +121,12 @@ def run_episode(env, agent, instance, prompts=None, verbose=False, logger=None):
                 "pass": bool(ev.get("PASS")) if ev else None,
                 "score": round(ev["score"], 4) if ev else None,
                 "deviation_mm": round(ev["deviation_mm"], 1) if ev else None,
+                # How far from PASSING this turn was, not just how far from healthy: the raw
+                # deviation is meaningless without the part's own tolerance, which varies per shape.
+                "tau_mm": round(ev["tau_mm"], 1) if ev else None,
+                "over_tolerance_mm": round(ev["deviation_mm"] - ev["tau_mm"], 1) if ev else None,
+                "deviation_over_tau": round(ev["deviation_mm"] / ev["tau_mm"], 3)
+                                      if ev and ev.get("tau_mm") else None,
                 "closes": ev.get("closes"), "collides": ev.get("collides"),
                 "per_part": {k: {"deviation_mm": v["deviation_mm"], "within_tol": v["within_tol"],
                                  "closes": v["closes"]}
@@ -169,6 +175,9 @@ def run_episode(env, agent, instance, prompts=None, verbose=False, logger=None):
         "terminal_pass": bool(ev["PASS"]),
         "terminal_score": float(ev["score"]),
         "terminal_deviation_mm": float(ev["deviation_mm"]),
+        "tau_mm": float(ev["tau_mm"]),
+        "terminal_over_tolerance_mm": round(float(ev["deviation_mm"]) - float(ev["tau_mm"]), 3),
+        "terminal_deviation_over_tau": round(float(ev["deviation_mm"]) / float(ev["tau_mm"]), 3),
         "terminal_per_part": {k: {"deviation_mm": v["deviation_mm"],
                                   "within_tol": v["within_tol"], "closes": v["closes"]}
                               for k, v in (ev.get("per_part") or {}).items()},
@@ -182,7 +191,10 @@ def run_episode(env, agent, instance, prompts=None, verbose=False, logger=None):
         "n_api_giveup": api_giveups,
         "first_sim_score": first_sim_score,
         "first_sim_pass": (first_sim_score is not None and first_sim_score >= 0.80),
+        # per-turn distance from the threshold, so a trajectory can be read straight off the record
         "history": [{"mode": h["mode"], "action": h["action_str"],
+                     "over_tolerance_mm": round(h["eval"]["deviation_mm"] - h["eval"]["tau_mm"], 1),
+                     "deviation_over_tau": round(h["eval"]["deviation_mm"] / h["eval"]["tau_mm"], 3),
                      "think": h.get("think", ""), "backtrack": h.get("backtrack", False),
                      "n_actions": h.get("n_actions"), "state_specs": h.get("state_specs"),
                      "pass": bool(h["eval"]["PASS"]), "score": round(h["eval"]["score"], 4),
