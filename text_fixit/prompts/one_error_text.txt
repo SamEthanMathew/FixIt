@@ -16,7 +16,8 @@ Each observation gives the geometry as numbers (no images):
   - the ORIGINAL broken object's per-part centre and size in each part's own axes, identical
     every turn, and
   - the result of the action you chose on the PREVIOUS turn, as per-part world centres with all
-    doors driven OPEN, then the same with all doors driven SHUT.
+    doors driven OPEN, then the same with all doors driven SHUT. On the FIRST turn you have not
+    acted yet, so this describes the broken object itself.
 Comparing the two tells you where the part sits now against where it started. The healthy target is
 never shown - you have to search for it.
 

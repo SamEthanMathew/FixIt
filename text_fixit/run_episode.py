@@ -29,7 +29,8 @@ def _parse_kwargs(env):
     return {"multi": env.action_contract == "batch",
             "allow_reset": env.action_contract == "stack",
             "allow_bare_commit": env.action_contract == "stack",
-            "reveal_fixable": env.reveal_fixable}
+            "reveal_fixable": env.reveal_fixable,
+            "max_actions": getattr(env, "max_actions", None)}
 
 
 def _gt_fix_actions(env):

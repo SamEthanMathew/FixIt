@@ -110,7 +110,8 @@ class FridgeRepairEnv:
 
     def __init__(self, budget=6, state_modality="text", show_deviation=True,
                  action_contract="batch", hard=False,
-                 reveal_fixable=None, hard_render=None, multi_fault_hint=None):
+                 reveal_fixable=None, hard_render=None, multi_fault_hint=None,
+                 max_actions=None):
         """`hard` is a preset for the three hardening switches below; each can be overridden
         independently, because they are separable difficulties and worth varying one at a time:
 
@@ -126,6 +127,9 @@ class FridgeRepairEnv:
         self.state_modality = state_modality
         self.show_deviation = show_deviation
         self.action_contract = action_contract
+        # Cap on actions per turn. The `one_error` prompt promises exactly one; batch otherwise
+        # accepts up to MAX_ACTIONS_PER_TURN, so the promise has to be enforced here.
+        self.max_actions = max_actions
         self.hard = hard
         self.reveal_fixable = (not hard) if reveal_fixable is None else reveal_fixable
         self.hard_render = hard if hard_render is None else hard_render

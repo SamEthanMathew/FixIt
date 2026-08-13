@@ -126,7 +126,7 @@ def _parse_call(op, arg_str, id_map, reveal_fixable=True):
 
 
 def parse(text, id_map, multi=False, allow_reset=False, allow_bare_commit=False,
-          reveal_fixable=True):
+          reveal_fixable=True, max_actions=None):
     """Parse one model turn. `id_map` is part_table.build_part_table()[1].
 
     multi=True             accept an ordered LIST of calls (the batch contract)
@@ -153,8 +153,11 @@ def parse(text, id_map, multi=False, allow_reset=False, allow_bare_commit=False,
     if not multi and len(calls) > 1:
         return _err(f"exactly one action per turn is allowed, found {len(calls)}",
                     think, backtrack)
-    if len(calls) > MAX_ACTIONS_PER_TURN:
-        return _err(f"at most {MAX_ACTIONS_PER_TURN} actions per turn, found {len(calls)}",
+    cap = MAX_ACTIONS_PER_TURN if max_actions is None else max_actions
+    if len(calls) > cap:
+        # The prompt states the limit; without enforcement a model that ignores it is silently
+        # rewarded, and models differ in how often they ignore it -- which biases any comparison.
+        return _err(f"at most {cap} action{'' if cap == 1 else 's'} per turn, found {len(calls)}",
                     think, backtrack)
 
     actions = []

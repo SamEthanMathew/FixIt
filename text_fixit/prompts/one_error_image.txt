@@ -17,6 +17,8 @@ WHAT YOU SEE
 Each observation gives two rendered views, both with all doors CLOSED (not text coordinates):
   - the ORIGINAL broken object, identical every turn, and
   - the result of the action you chose on the PREVIOUS turn.
+On the FIRST turn you have not acted yet, so you are shown the annotated part view and the broken
+object itself.
 A correctly repaired door seats flush against the body with no gap and no overlap; a broken one
 leaves a visible gap, interpenetrates the body or another door, or is mis-sized. Read the door's
 position, size and seating off these two images.
