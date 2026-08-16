@@ -186,6 +186,12 @@ class FridgeRepairEnv:
             with quiet():
                 self._annotated = views.annotated_part_view(self.broken, self.id_map,
                                                             self.center, self.dist, hard=self.hard_render)
+            # Object axes -> directions in the render, DERIVED from this run's actual camera and the
+            # URDF's own link frames (hard_render swings the yaw, so a static legend would be
+            # inverted half the time). Computed once here because window3 rebuilds the system prompt
+            # every turn. None when the fixable parts do not share a frame -- then no legend is true.
+            self.axis_legend = views.axis_image_legend(self.broken, self.id_map, self.center,
+                                                       self.dist, hard=self.hard_render)
         ev = self._evaluate_specs([], "broken")     # broken as-is
         self.reset_eval = ev
         # cache the ORIGINAL broken object's views -> shown every turn as the "before"

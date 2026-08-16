@@ -1,31 +1,21 @@
-OUTPUT FORMAT - THIS IS CHECKED BY A PARSER, NOT A HUMAN
-Every reply must be exactly these two lines, in this order:
-
-  <think>one or two sentences: what the images show, and what correction follows</think>
-  <act>SIMULATE TRANSLATE(P0, X, -0.06)</act>
-
-The word SIMULATE is LITERAL. Type it exactly, every turn. It is not a placeholder and it is not
-optional - only the call after it changes. These are all well-formed:
-
-  <act>SIMULATE TRANSLATE(P0, X, -0.06)</act>
-  <act>SIMULATE ROTATE(P2, Y, 12.5)</act>
-  <act>SIMULATE SCALE(P1, Z, 0.85)</act>
-
-Rules the parser enforces - a reply breaking any of them is DISCARDED and the turn is wasted:
-  - Your reply must contain an <act>...</act> line. Reasoning alone is not an answer.
-  - The first word inside <act> is SIMULATE (or COMMIT). Never omit it.
-  - Then exactly one call: TRANSLATE / ROTATE / SCALE / NO_FIX.
-  - Nothing outside the two tags. No preamble, no closing remark.
-
-These two are the common mistakes. Both score as a failed turn:
-  The door is misaligned, so I will attempt a small rotation around the X-axis.
-  ^ describing an action in words does not perform it. You must still emit the <act> line.
-  <act>TRANSLATE(P1, X, 0.05)</act>
-  ^ the word SIMULATE is missing. Every <act> begins with SIMULATE or COMMIT.
-
-The part, axis and value above are only illustrations - decide every field from what you observe.
-
 You are repairing a malfunctioning articulated object in a physics simulator.
+
+OUTPUT FORMAT
+Reply with a <think> block and then an <act> block, in that order:
+
+  <think>your reasoning</think>
+  <act>SIMULATE OP(PART, AXIS, VALUE)</act>
+
+where OP is TRANSLATE, ROTATE or SCALE, PART is a part id from the table, AXIS is X, Y or Z, and
+VALUE is a number you choose. The word SIMULATE is literal - type it exactly. Well-formed replies
+look like `SIMULATE ROTATE(P2, Z, -18)`, `SIMULATE SCALE(P1, Y, 0.74)`, `SIMULATE TRANSLATE(P3, X,
+0.11)`; the part, axis and value in those are arbitrary and carry no hint about your object.
+
+A reply is DISCARDED, and the turn wasted, if it breaks any of these:
+  - it must contain an <act>...</act> line; reasoning on its own is not an answer,
+  - the first word inside <act> must be SIMULATE or COMMIT,
+  - exactly one call, and nothing outside the two tags.
+Describing an action in prose ("I will rotate it slightly") does not perform it - emit the call.
 
 OBJECT
 Category: $category          Instance: $instance_id
@@ -49,17 +39,15 @@ object itself.
 A correctly repaired door seats flush against the body with no gap and no overlap; a broken one
 leaves a visible gap, interpenetrates the body or another door, or is mis-sized. Read the door's
 position, size and seating off these two images.
-Each observation also reports how far the worst faulty part still is from correct, in
-millimetres, together with the tolerance it has to get under. Use that number to judge how
-large your correction has to be.
-
+$deviation_note
 FRAME AND UNITS
 Right-handed object frame; the axes X, Y, Z are the coordinate axes in the part table (centres and
-bounding boxes). Lengths in metres, rotations in degrees (right-hand rule).
+sizes). Lengths in metres, rotations in degrees (right-hand rule).
   TRANSLATE moves the whole part along an axis.
   ROTATE turns the part in place about its own CENTROID, around the given axis.
   SCALE resizes the part along an axis about its hinge-side edge.
 
+$axis_legend
 ACTION SPACE
 Emit exactly one action:
   TRANSLATE(part, axis, value)   axis in {X,Y,Z}, value in metres,    $value_grid
@@ -73,6 +61,28 @@ TOLERANCE
 A repair passes if the faulty part is restored to within $tol_pct of its size, the door still
 closes, and no parts interpenetrate.
 
+HOW TO WORK
+Decide three things before you pick a number, and say each one in your <think>:
+
+  1. WHICH PART is wrong. Compare the two doors, and each door against the body it closes onto.
+
+  2. WHAT KIND of error it is. Exactly one of these three fits; rule out the other two:
+       MISPLACED (-> TRANSLATE): correct size and squarely aligned, but sitting off to one side.
+         Its edges stay parallel to the body's, and the gap it leaves is even along its length.
+       MISTURNED (-> ROTATE): correct size and roughly the right place, but tilted. Its edges are
+         no longer parallel to the body's, so the gap is a wedge - pinched at one end, open at the
+         other - or one corner digs into the body while the opposite corner lifts away.
+       MIS-SIZED (-> SCALE): its proportions differ from the other door or from the opening it has
+         to fill - it overhangs an edge, or leaves a strip uncovered along one side.
+     Check all three before committing; the most obvious symptom is not always the right one.
+
+  3. WHICH AXIS, using the picture directions above. Say what you are reading it off.
+     For a size error you can settle it numerically instead of by eye: hold the part's three sizes
+     from the table against a reference part, and the axis whose ratio is furthest from 1 is the
+     axis to correct - that ratio is roughly the factor you need.
+
+Faults are large enough to see: a part is out by several times the tolerance, not by a sliver.
+
 PROCEDURE
 Each action is applied FRESH to the original broken object (attempts do not stack) - always issue
 the FULL correction, not a small increment. SIMULATE returns new rendered views. It does not commit.
@@ -81,15 +91,18 @@ KEEP GOING until a SIMULATE reports ALL PASS - do not stop early. You have up to
 use them to search and refine. Only COMMIT a repair a SIMULATE has reported ALL PASS:
 
   <think>The last SIMULATE reported ALL PASS, so this is the repair.</think>
-  <act>COMMIT TRANSLATE(P0, X, -0.06)</act>
+  <act>COMMIT OP(PART, AXIS, VALUE)</act>
 
-USE THE FEEDBACK. Each observation tells you the remaining error in millimetres.
-  - If an attempt REDUCED the error, keep the same operation, part and axis, and adjust only the
-    VALUE. If value V took the error from A down to B, then V closed (A - B) of the gap, so the
-    value that closes all of A is about V * A / (A - B). Use that.
-  - If an attempt INCREASED the error, that operation or axis is wrong, or the sign is flipped.
-    Do not keep pushing the same value further in the same direction.
-Never abandon the best attempt so far to try an unrelated operation.
+SEARCH DELIBERATELY. Once an attempt has moved the part closer, keep the SAME operation, part and
+axis and change only the value - the remaining error tells you how much further to go. If two
+values bracket the answer, one still short and one overshooting, try a value between them. Do not
+abandon your best result to try something unrelated, and do not repeat a value you have already
+simulated.
+
+READ THE NON-RESULT TOO. If you try two or three clearly different values on one axis and the
+object barely changes, that axis is not where the fault is - the error would move if it were.
+Switch to a different axis or a different operation rather than making smaller and smaller
+adjustments to the one that is doing nothing.
 
 Never commit a repair you have seen fail or have not simulated. Only if your last SIMULATE is spent
 without solving it, commit your best attempt. Committing ends the episode and is scored. If a
@@ -98,5 +111,3 @@ simulation convinces you an earlier line of reasoning was wrong, emit <backtrack
 
 The action is literal TEXT inside the <act> tags. It is NOT a tool call or a function call - do not
 emit it through any tool-use mechanism.
-
-REMINDER - every reply needs an <act> line, and the word after "<act>" is SIMULATE or COMMIT.

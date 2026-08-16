@@ -33,7 +33,7 @@ def build_part_table(urdf, reveal_fixable=True):
 
     table_text : the formatted table string for the prompt.
     id_map     : {"P0": part_dict, ...} where part_dict is the parts.list_parts entry augmented
-                 with "id" and "bbox" (extent w,d,h in metres).
+                 with "id" and "bbox" (extent along the link's own X, Y, Z in metres).
 
     reveal_fixable=False (the hard benchmark) drops the `role` and `fixable` columns, so the table
     no longer hands the agent the candidate set -- it has to work out which parts are repairable
@@ -46,7 +46,12 @@ def build_part_table(urdf, reveal_fixable=True):
     cols = [f"{'id':<4}", f"{'label':<14}"]
     if reveal_fixable:
         cols += [f"{'role':<10}", f"{'fixable':<8}"]
-    cols += [f"{'bbox (w,d,h)':<18}", "joint"]
+    # NOT "(w,d,h)": geom.link_geometry returns the extent along the link's own X, Y, Z, and for
+    # these doors that is (width, HEIGHT, thickness). The old header therefore told the model that
+    # Z was height when Z is the thinnest axis -- and the thinnest axis is one corruption.py can
+    # never choose (it draws from the two LARGEST extents). Qwen3-VL-8B duly put 15/15 of its SCALE
+    # actions on Z, i.e. every one on an axis where no fault can exist.
+    cols += [f"{'size X,Y,Z (m)':<18}", "joint"]
     header = "  " + " ".join(cols)
     for i, part in enumerate(parts):
         pid = f"P{i}"

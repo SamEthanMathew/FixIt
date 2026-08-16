@@ -202,3 +202,99 @@ if __name__ == "__main__":
     save(closed_view(args.urdf, center, dist, id_map)[0], f"{args.out}/closed.png")
     save(annotated_part_view(args.urdf, id_map, center, dist), f"{args.out}/annotated.png")
     print(f"wrote closed, annotated -> {args.out}")
+
+
+# --------------------------------------------------------------------------- axis legend
+# A vision model is asked for an axis in the OBJECT frame but its only evidence is a 2D render.
+# Nothing connected the two: prompts stated "right-handed object frame" and stopped, and Qwen3-VL-8B
+# duly picked the axis at chance (36.2% against 33.3%). This derives the missing legend FROM THE
+# ACTUAL CAMERA rather than hardcoding it -- closed_view swings the yaw by 80 degrees when hard=True,
+# so a fixed legend would be confidently inverted on half the runs.
+def _camera_basis(center, dist, yaw, pitch):
+    """World-space (right, up, toward_viewer) unit vectors for the render camera."""
+    import numpy as np
+    import pybullet as p
+    v = np.array(p.computeViewMatrixFromYawPitchRoll(list(center), dist, yaw, pitch, 0, 2))
+    R = v.reshape(4, 4, order="F")[:3, :3]      # column-major; rows are the camera axes in world
+    # Row 2 of a lookAt rotation is the BACKWARD axis -- it points from the target to the eye, i.e.
+    # toward the viewer. (Negating it, the intuitive-looking choice, inverts every depth statement.)
+    return R[0], R[1], R[2]
+
+
+def _link_axes_world(urdf, link_name):
+    """Rotation of a link's own frame into world, as (x_world, y_world, z_world) unit vectors."""
+    import numpy as np
+    import pybullet as p
+    from quiet import quiet
+    with quiet():
+        cid = p.connect(p.DIRECT)
+        try:
+            body = p.loadURDF(urdf, useFixedBase=True, physicsClientId=cid)
+            idx = None
+            for j in range(p.getNumJoints(body, physicsClientId=cid)):
+                info = p.getJointInfo(body, j, physicsClientId=cid)
+                if info[12].decode() == link_name:
+                    idx = j
+                    break
+            if idx is None:
+                quat = p.getBasePositionAndOrientation(body, physicsClientId=cid)[1]
+            else:
+                quat = p.getLinkState(body, idx, physicsClientId=cid)[5]
+            R = np.array(p.getMatrixFromQuaternion(quat)).reshape(3, 3)
+        finally:
+            p.disconnect(cid)
+    return R[:, 0], R[:, 1], R[:, 2]
+
+
+def _describe(vec, right, up, toward):
+    """One object axis -> plain words, from its components on the camera basis.
+
+    Depth is mentioned ONLY when the axis barely moves on screen. Under this camera all three
+    positive axes tilt somewhat toward the viewer, so an unconditional "and toward you" is true of
+    everything and therefore discriminates nothing -- the usable cue is the in-plane direction.
+    """
+    import math
+    import numpy as np
+    r, u, t = float(np.dot(vec, right)), float(np.dot(vec, up)), float(np.dot(vec, toward))
+    inplane = math.hypot(r, u)
+    if inplane < 0.35:
+        return ("almost straight out of the screen toward you" if t > 0
+                else "almost straight into the screen away from you") + \
+               " (it hardly moves the part sideways or up in the picture)"
+    if abs(u) > 0.8:
+        return "straight up in the picture" if u > 0 else "straight down in the picture"
+    horiz = "right" if r > 0.15 else ("left" if r < -0.15 else "")
+    vert = "upper" if u > 0.15 else ("lower" if u < -0.15 else "")
+    where = f"{vert}-{horiz}" if vert and horiz else (vert or horiz)
+    return f"toward the {where} of the picture"
+
+
+def axis_image_legend(urdf, id_map, center, dist, hard=False):
+    """Plain-language mapping from object axes to directions in the rendered view.
+
+    Returns None when the fixable parts do not share one frame -- in that case no single legend is
+    true, and saying nothing beats saying something wrong for the general case.
+    """
+    import numpy as np
+    links = [pt["link"] for pt in id_map.values() if pt.get("corruptible")]
+    if not links:
+        return None
+    try:
+        axes = [_link_axes_world(urdf, ln) for ln in links]
+    except Exception:
+        return None
+    a0 = axes[0]
+    for a in axes[1:]:
+        if any(float(np.dot(a[i], a0[i])) < 0.99 for i in range(3)):
+            return None                      # parts disagree -> no single legend holds
+    yaw = HARD_YAW if hard else EASY_YAW
+    right, up, toward = _camera_basis(center, dist, yaw, -30)
+    names = ("X", "Y", "Z")
+    lines = [f"  +{n} points {_describe(v, right, up, toward)}; -{n} is the opposite."
+             for n, v in zip(names, a0)]
+    return ("HOW THE AXES LOOK IN THE PICTURES\n"
+            "Every view uses the same fixed camera, so these directions hold in every image:\n"
+            + "\n".join(lines) + "\n"
+            "The part table lists each part's size along its own X, Y and Z, in that order, so you\n"
+            "can tell which axis is the part's height, its width and its thickness by comparing\n"
+            "those three numbers against what you see.")

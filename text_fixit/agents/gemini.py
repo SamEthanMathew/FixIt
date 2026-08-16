@@ -217,6 +217,8 @@ class GeminiAgent(Agent):
             # contract block, so omitting it here shipped the literal "$fixable_note" to the model.
             fixable_note=fixable_note, targetable=self._targetable(env),
             legal_pid=self._legal_pid(env),
+            axis_legend=(getattr(env, 'axis_legend', None) or ''),
+            deviation_note=self._deviation_note(env),
             **_magnitude_strings(env.instance),
             thinking_note=self._thinking_note(),
             value_grid=VALUE_GRID_STR, angle_grid=ANGLE_GRID_STR, scale_grid=SCALE_GRID_STR,
@@ -254,6 +256,21 @@ class GeminiAgent(Agent):
         the guess."""
         ids = [pid for pid, pt in env.id_map.items() if pt.get("corruptible")]
         return ", ".join(ids) if ids else "(none)"
+
+    @staticmethod
+    def _deviation_note(env):
+        """The 'observations report the error in mm' sentence -- ONLY when they actually do.
+
+        env.show_deviation gates that line in env._render. The strict prompt inherited the claim
+        from the dev ablation and asserted it unconditionally, so on a show_deviation=False run it
+        promised a number that appeared in 87 of 320 prompts, and told the model to do arithmetic
+        on two values it was never given."""
+        if not getattr(env, "show_deviation", False):
+            return ""
+        return ("Each observation also reports how far the worst faulty part still is from correct, "
+                "in millimetres, together with the tolerance it has to get under.\n"
+                "USE THAT NUMBER. If value V took the error from A down to B, then V closed (A - B) "
+                "of the gap, so the value that closes all of A is about V * A / (A - B).\n")
 
     @staticmethod
     def _legal_pid(env):
