@@ -215,7 +215,8 @@ class GeminiAgent(Agent):
             margin_x=f"{env.instance.get('broken_margin', 3.0):g}",
             # self-contained sets reference $fixable_note directly; it used to live only in the
             # contract block, so omitting it here shipped the literal "$fixable_note" to the model.
-            fixable_note=fixable_note,
+            fixable_note=fixable_note, targetable=self._targetable(env),
+            legal_pid=self._legal_pid(env),
             **_magnitude_strings(env.instance),
             thinking_note=self._thinking_note(),
             value_grid=VALUE_GRID_STR, angle_grid=ANGLE_GRID_STR, scale_grid=SCALE_GRID_STR,
@@ -242,6 +243,29 @@ class GeminiAgent(Agent):
             lines.append(f"  {h['action_str']} -> {crit}")
         return "\n".join(lines)
 
+    @staticmethod
+    def _targetable(env):
+        """The part ids an action may legally name, as literal text ("P1, P2").
+
+        history="window3" is a STATELESS call, so the annotated part view -- which ships only in the
+        first message -- is never seen again, and the fixable column of the table has to carry the
+        whole job. Qwen3-VL-8B then defaults to "P0" regardless: on the two std30 pilots where P0 is
+        the body it spent 27 turns targeting it. Naming the legal ids costs a few tokens and removes
+        the guess."""
+        ids = [pid for pid, pt in env.id_map.items() if pt.get("corruptible")]
+        return ", ".join(ids) if ids else "(none)"
+
+    @staticmethod
+    def _legal_pid(env):
+        """A part id that is actually targetable on THIS instance, for the worked example.
+
+        The example cannot hardcode P0: on instances where P0 is the body, showing
+        `TRANSLATE(P0, ...)` teaches exactly the illegal action the model already defaults to."""
+        for pid, pt in env.id_map.items():
+            if pt.get("corruptible"):
+                return pid
+        return "P1"
+
     def _step_prompt(self, env, obs, budget_left):
         if self.oneshot:
             note = " -- you get NO simulations; output a single COMMIT action now"
@@ -251,7 +275,8 @@ class GeminiAgent(Agent):
             note = ""
         return self._step_tmpl.safe_substitute(
             observation=obs["text"], budget_left=(0 if self.oneshot else budget_left),
-            commit_note=note, history=self._history_text(env))
+            commit_note=note, history=self._history_text(env),
+            targetable=self._targetable(env), legal_pid=self._legal_pid(env))
 
     def _obs_message(self, env, obs, budget_left):
         """A single turn's user message for history='full' (no re-injected history block -- the

@@ -5,9 +5,12 @@ Budget: $budget_left SIMULATE call(s) remaining$commit_note.
 Recent attempts (most recent last):
 $history
 
+You may ONLY target these parts: $targetable
+Any other part id is rejected and the turn is wasted.
+
 Reply with exactly two lines:
   <think>one sentence</think>
-  <act>SIMULATE TRANSLATE(P0, X, -0.06)</act>
+  <act>SIMULATE TRANSLATE($legal_pid, X, -0.06)</act>
 The word SIMULATE is literal and required; only the call after it changes. Reasoning without an
 <act> line wastes the turn. If your last attempt reduced the error, keep the same operation, part
 and axis and only change the value.
