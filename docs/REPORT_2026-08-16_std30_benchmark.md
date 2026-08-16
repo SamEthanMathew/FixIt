@@ -1,7 +1,8 @@
 # std30 — the standardized single-fault benchmark
 
 **Date:** 2026-08-16
-**Status:** complete — 10 conditions × 30 problems = 300 episodes
+**Status:** complete — 10 conditions × 30 problems = 300 episodes, plus a clean-format
+rerun of the Qwen image arm (§6.1)
 **Commits:** `514bf75` (results + tooling), `17486b6` (full run tree)
 **Raw data:** `text_fixit/runs/one_error_*/` · summaries mirrored in `results/std30/`
 
@@ -185,6 +186,44 @@ A further symptom: Qwen emitted **67–172 invalid actions per condition** (API 
 and used essentially the full budget on every episode (9.8–10.0 turns vs 6.2–8.4), i.e. it
 never concluded it was done.
 
+### 6.1 The invalid actions were a configuration artefact — and removing them changed nothing
+
+All six Qwen arms ran `--agent loop_qwen_full`, i.e. `history="full"`. That is the exact
+setting `EXPERIMENT_2026-08-11_qwen_scale_ladder.md` §2.1 had already identified as making
+the model "write a complete plan in prose and never convert it to syntax", with `window3`
+recorded there as the fix. The ladder judged the 8B insensitive to the flag — but on
+*success rate*, not on invalid rate, so the confound survived into std30.
+
+Two harness faults compounded it. `env.py` returned the INVALID-ACTION observation with no
+`images` key, so the turn after every malformed reply was sent **blind** — 203 of 203
+image-less turns followed a parse error. And `window3`, being a stateless call, never
+re-shows the annotated part view, so the model defaulted to targeting `P0` even on
+instances where `P0` is the body.
+
+Fixed all three (re-show the views, name the legal part ids, state the format rule per turn
+without a copyable example) and reran the image arm on the same 30 problems:
+
+| metric | `qw8_image` (as published above) | `strict_qw8_image` |
+|---|---|---|
+| parse errors | 203 | **4** |
+| images sent per turn | 0, 2 or 4 | **always 2** |
+| solved | 0/30 | **1/30** |
+| median best deviation | 6.62× τ | 6.72× τ |
+| episodes reaching a passing state | 0 | 1 (and it committed it) |
+
+**Format compliance was essentially free to fix, and worth almost nothing.** A 98 %
+reduction in malformed output moves success by one episode and leaves the median distance
+from threshold unchanged at ~6.7× tolerance. The 0/30 was never an artefact of the model
+failing to speak the protocol; it fails to find the repair. That is the cleanest available
+confirmation that this model is identification-limited, and it retires the idea that a
+lenient parser or a better-worded prompt is what stands between the 8B and a score.
+
+One methodological note worth carrying forward: **Qwen3-VL-8B copies any concrete action
+placed near the generation point.** A worked example in the per-turn step prompt produced
+72 of ~130 actions at exactly the example's value, all of them the example's operation. The
+same anchoring appeared when the action tag was moved ahead of the reasoning tag. Concrete
+examples belong in the system prompt; the per-turn reminder must state the rule only.
+
 ---
 
 ## 7. Integrity checks
@@ -200,7 +239,7 @@ bug (`updatesAug12/INVALIDATED_DATA.md`).
 | API give-ups (timeout/refusal) | 1 in `er_image`, 2 in `er_text`, 0 elsewhere |
 | oracle on this problem set | 30/30 |
 
-### Open caveat — missing renders in the Qwen image arms
+### RESOLVED — missing renders in the Qwen image arms
 
 13–30 % of turns in the three Qwen *image* conditions rendered **zero** images
 (`qw8_image` 60/352, `dev_qw8_image` 43/342, `scale_qw8_image` 100/335). The API image arms
@@ -211,11 +250,16 @@ turns, so this is **not** the old transport bug — the environment produced not
 The affected turns are concentrated late in episodes and show no unusual deviation
 (median 6.7× τ vs 7.4× τ on normal turns), so it is not obviously degenerate geometry.
 
-**The cause is not established.** It should be found before the Qwen image numbers are
-cited as a clean measurement of feedback use. It does not plausibly explain the 0/30 —
-early turns did carry images, and the text arms, which have no renders at all by
-construction, scored the same — but any claim of the form "Qwen ignores visual feedback
-across the episode" is weakened by it and should be held until this is closed.
+**Cause found (2026-08-16).** `env.py:201` returned the INVALID-ACTION observation without
+an `images` key, so `run_episode`'s `obs.get("images", [])` sent zero images on the turn
+after every malformed reply. The coupling is exact: **203 of 203** image-less turns follow a
+parse error. Because the model's failure mode *was* malformed output, this was a doom loop —
+bad format → blind → worse format. The environment now re-shows the views it last rendered,
+and the rerun (§6.1) sends 2 images on every turn of every episode.
+
+Separately, image delivery to Qwen was verified **behaviourally**, not by counters: a
+read-back test through the real transport — a secret word rendered only into pixels, plus a
+two-image ordering check — passes 3/3. Images do reach the model.
 
 ---
 
@@ -245,13 +289,20 @@ Note this arm needed 6-way sharding to finish in reasonable wall-clock.
 1. **Ship both modalities together.** The complementary-channel result (§4) is the
    highest-value follow-up in the project: it predicts a combined observation recovers
    rotation *and* translation, and it is a small harness change.
-2. **Stop adding information to Qwen's prompt.** Two well-targeted ablations returned
-   1/60 each. The 8B model's ceiling here is identification. If the open-weight arm is
-   worth pursuing, the lever is a larger model or fine-tuning, not prompt content.
+2. **Stop adding information to Qwen's prompt, and stop tuning its format.** Two targeted
+   information ablations returned 1/60 each, and fixing format compliance outright (203 → 4
+   parse errors, §6.1) moved success from 0/30 to 1/30 with the median distance from
+   threshold unchanged. The 8B's ceiling here is identification.
+   **A bigger open base is not the answer either**: the 2026-08-11 ladder already ran
+   Qwen3-VL-32B at n=30/cell and it scored **0/25 against the 8B's 1/25** on the τ=1.5 %
+   single-fault rung — std30's exact setting — with both models 0/160 across all τ=1.5 %
+   rungs. If the open-weight arm continues, the lever is fine-tuning the 8B on a rung where
+   it has signal, not more parameters and not more prompt.
 3. **Magnitude is solved for the frontier models.** Effort should move to fault
    *identification* — which is where 100 % of their remaining headroom now sits.
-4. **Close the missing-render caveat** (§7) before publishing anything that turns on
-   Qwen's use of visual feedback.
+4. ~~Close the missing-render caveat.~~ **Done** (§7): the cause was the image-less
+   INVALID-ACTION observation, now fixed, and image delivery to Qwen is verified by
+   read-back. Nothing in the report now rests on an open harness question.
 
 ---
 

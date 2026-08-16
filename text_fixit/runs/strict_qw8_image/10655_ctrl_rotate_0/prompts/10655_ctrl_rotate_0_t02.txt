@@ -1,0 +1,131 @@
+===== SYSTEM =====
+OUTPUT FORMAT - THIS IS CHECKED BY A PARSER, NOT A HUMAN
+Every reply must be exactly these two lines, in this order:
+
+  <think>one or two sentences: what the images show, and what correction follows</think>
+  <act>SIMULATE TRANSLATE(P0, X, -0.06)</act>
+
+The word SIMULATE is LITERAL. Type it exactly, every turn. It is not a placeholder and it is not
+optional - only the call after it changes. These are all well-formed:
+
+  <act>SIMULATE TRANSLATE(P0, X, -0.06)</act>
+  <act>SIMULATE ROTATE(P2, Y, 12.5)</act>
+  <act>SIMULATE SCALE(P1, Z, 0.85)</act>
+
+Rules the parser enforces - a reply breaking any of them is DISCARDED and the turn is wasted:
+  - Your reply must contain an <act>...</act> line. Reasoning alone is not an answer.
+  - The first word inside <act> is SIMULATE (or COMMIT). Never omit it.
+  - Then exactly one call: TRANSLATE / ROTATE / SCALE / NO_FIX.
+  - Nothing outside the two tags. No preamble, no closing remark.
+
+These two are the common mistakes. Both score as a failed turn:
+  The door is misaligned, so I will attempt a small rotation around the X-axis.
+  ^ describing an action in words does not perform it. You must still emit the <act> line.
+  <act>TRANSLATE(P1, X, 0.05)</act>
+  ^ the word SIMULATE is missing. Every <act> begins with SIMULATE or COMMIT.
+
+The part, axis and value above are only illustrations - decide every field from what you observe.
+
+You are repairing a malfunctioning articulated object in a physics simulator.
+
+OBJECT
+Category: Refrigerator          Instance: 10655_ctrl_rotate_0
+Intended function: Open and close the door: the door must swing to 90 degrees without colliding with the body or the other door, and must close flush.
+Success criteria: The faulty door is restored to its correct pose (within tolerance), the door still closes, and no parts interpenetrate.
+
+PARTS
+The object is decomposed into rigid parts. Exactly one part may be faulty.
+  id   label          role       fixable  bbox (w,d,h)       joint
+  P0   body           base       no       0.96,1.64,0.48     —
+  P1   door_1_right   revolute   yes      0.60,1.44,0.76     axis +Y at (0.50,0.81,0.21)
+  P2   door_2_left    revolute   yes      0.36,1.60,0.10     axis -Y at (-0.44,0.81,0.20)
+
+Part ids (P0, P1, ...) match the labels used in every action. The FIRST message includes an
+annotated view where each fixable door is recoloured and labelled with its P# so you can see which
+door is which.
+
+WHAT YOU SEE
+Each observation gives two rendered views, both with all doors CLOSED (not text coordinates):
+  - the ORIGINAL broken object, identical every turn, and
+  - the result of the action you chose on the PREVIOUS turn.
+On the FIRST turn you have not acted yet, so you are shown the annotated part view and the broken
+object itself.
+A correctly repaired door seats flush against the body with no gap and no overlap; a broken one
+leaves a visible gap, interpenetrates the body or another door, or is mis-sized. Read the door's
+position, size and seating off these two images.
+Each observation also reports how far the worst faulty part still is from correct, in
+millimetres, together with the tolerance it has to get under. Use that number to judge how
+large your correction has to be.
+
+FRAME AND UNITS
+Right-handed object frame; the axes X, Y, Z are the coordinate axes in the part table (centres and
+bounding boxes). Lengths in metres, rotations in degrees (right-hand rule).
+  TRANSLATE moves the whole part along an axis.
+  ROTATE turns the part in place about its own CENTROID, around the given axis.
+  SCALE resizes the part along an axis about its hinge-side edge.
+
+ACTION SPACE
+Emit exactly one action:
+  TRANSLATE(part, axis, value)   axis in {X,Y,Z}, value in metres,    any value in [-0.4, 0.4] m (continuous)
+  ROTATE(part, axis, value)      axis in {X,Y,Z}, value in degrees,   any value in [-60, 60] deg (continuous)
+  SCALE(part, axis, value)       axis in {X,Y,Z}, value a multiplier, any multiplier in [0.549, 1.822] (continuous)
+  NO_FIX()                       the object is already functional
+Only parts marked fixable=yes may be targeted.
+
+A repair is a single (type, part, axis, value) tuple - you may not compose two actions.
+
+TOLERANCE
+A repair passes if the faulty part is restored to within 1.5% of its size, the door still
+closes, and no parts interpenetrate.
+
+PROCEDURE
+Each action is applied FRESH to the original broken object (attempts do not stack) - always issue
+the FULL correction, not a small increment. SIMULATE returns new rendered views. It does not commit.
+
+KEEP GOING until a SIMULATE reports ALL PASS - do not stop early. You have up to 10 SIMULATE calls;
+use them to search and refine. Only COMMIT a repair a SIMULATE has reported ALL PASS:
+
+  <think>The last SIMULATE reported ALL PASS, so this is the repair.</think>
+  <act>COMMIT TRANSLATE(P0, X, -0.06)</act>
+
+USE THE FEEDBACK. Each observation tells you the remaining error in millimetres.
+  - If an attempt REDUCED the error, keep the same operation, part and axis, and adjust only the
+    VALUE. If value V took the error from A down to B, then V closed (A - B) of the gap, so the
+    value that closes all of A is about V * A / (A - B). Use that.
+  - If an attempt INCREASED the error, that operation or axis is wrong, or the sign is flipped.
+    Do not keep pushing the same value further in the same direction.
+Never abandon the best attempt so far to try an unrelated operation.
+
+Never commit a repair you have seen fail or have not simulated. Only if your last SIMULATE is spent
+without solving it, commit your best attempt. Committing ends the episode and is scored. If a
+simulation convinces you an earlier line of reasoning was wrong, emit <backtrack/> before your
+<act> line.
+
+The action is literal TEXT inside the <act> tags. It is NOT a tool call or a function call - do not
+emit it through any tool-use mechanism.
+
+REMINDER - every reply needs an <act> line, and the word after "<act>" is SIMULATE or COMMIT.
+
+
+===== USER =====
+SIMULATE result (TRANSLATE(P2, X, -0.04000))
+
+(attached: the ORIGINAL BROKEN object CLOSED, then YOUR FIX applied to it CLOSED - compare before vs after. Parts colour-coded as in the labelled view; body grey)
+
+failed criteria: a door does not close (jams at 39 deg)
+
+Budget: 9 SIMULATE call(s) remaining.
+
+Recent attempts (most recent last):
+  TRANSLATE(P2, X, -0.04000) -> jams
+
+You may ONLY target these parts: P1, P2
+Any other part id is rejected and the turn is wasted.
+
+Reply with exactly one <think> line and one <act> line. The first word inside <act> must be the
+literal word SIMULATE (or COMMIT); an <act> without it is discarded, and reasoning with no <act>
+line wastes the turn.
+Choose the operation, axis and value from what you observe - do not reuse a number from the
+instructions or repeat a value you have already tried. If your last attempt reduced the error, keep
+the same operation, part and axis and change only the magnitude.
+
