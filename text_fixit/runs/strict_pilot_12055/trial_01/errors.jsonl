@@ -1,0 +1,1 @@
+{"episode": "12055_ctrl_translate_0", "turn": 0, "kind": "parse", "error": "part P1 is not fixable", "raw": "<think></think><act>SIMULATE ROTATE(P1, Z, -4.5)</act>\n  The door tilts left against the body; -4.5 deg about Z should seat it flush."}

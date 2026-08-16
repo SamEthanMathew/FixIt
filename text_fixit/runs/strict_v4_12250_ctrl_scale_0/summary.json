@@ -1,0 +1,133 @@
+{
+  "condition": "strict_v4_12250_ctrl_scale_0",
+  "prompt_set": "one_error_strict",
+  "model": "Qwen/Qwen3-VL-8B-Instruct",
+  "agent": "loop_qwen_full",
+  "modality": "image",
+  "contract": "batch",
+  "max_actions": 1,
+  "budget": 10,
+  "tau_frac": 0.015,
+  "problem_set": {
+    "n": 1,
+    "instances_path": "data/instances_std30.jsonl",
+    "mean_difficulty_D": 6.57
+  },
+  "trials": 1,
+  "solved": 0,
+  "success_rate": 0.0,
+  "iterations_when_solved": null,
+  "iterations_when_failed": {
+    "n": 1,
+    "min": 2,
+    "max": 2,
+    "median": 2,
+    "mean": 2.0
+  },
+  "ever_reached_threshold": 0,
+  "closest_approach_over_tau": {
+    "best": 6.83,
+    "mean": 6.83,
+    "median": 6.83
+  },
+  "by_fault_type": {
+    "scale": {
+      "n": 1,
+      "solved": 0,
+      "mean_closest_over_tau": 6.83
+    }
+  },
+  "deviation_trajectory": [
+    {
+      "turn": 1,
+      "n": 1,
+      "mean_best_over_tau": 6.83,
+      "best_single_over_tau": 6.83,
+      "n_under_threshold": 0
+    },
+    {
+      "turn": 2,
+      "n": 1,
+      "mean_best_over_tau": 6.83,
+      "best_single_over_tau": 6.83,
+      "n_under_threshold": 0
+    },
+    {
+      "turn": 3,
+      "n": 1,
+      "mean_best_over_tau": 6.83,
+      "best_single_over_tau": 6.83,
+      "n_under_threshold": 0
+    }
+  ],
+  "wall_clock_s": 27.4,
+  "seconds_per_trial": {
+    "n": 1,
+    "min": 26.5,
+    "max": 26.5,
+    "median": 26.5,
+    "mean": 26.5
+  },
+  "turn_latency_s": {
+    "n": 15,
+    "min": 0.7,
+    "max": 1.2,
+    "median": 0.7,
+    "mean": 0.81
+  },
+  "tokens": {
+    "prompt": 70443,
+    "completion_visible": 585,
+    "thinking": 0,
+    "output_billed": 585,
+    "total": 71028,
+    "per_trial": 71028
+  },
+  "integrity": {
+    "invalid_actions": 13,
+    "api_giveup_trials": 0,
+    "images_sent_per_turn": [
+      2,
+      4
+    ]
+  },
+  "per_problem": [
+    {
+      "slot": "trial_01",
+      "id": "12250_ctrl_scale_0",
+      "fault_type": "scale",
+      "ground_truth": "SCALE(P1, Y, 0.733483)",
+      "tau_mm": 29.1,
+      "initial_deviation_mm": 190.9,
+      "passed": false,
+      "iterations": 2,
+      "final_over_tolerance_mm": 169.547,
+      "final_over_tau": 6.833,
+      "closest_over_tau": 6.83,
+      "seconds": 26.5,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "TRANSLATE(P1, X, -0.03000)",
+          "over_tolerance_mm": 169.5,
+          "over_tau": 6.833,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "TRANSLATE(P1, X, -0.06000)",
+          "over_tolerance_mm": 182.6,
+          "over_tau": 7.281,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "TRANSLATE(P1, X, -0.03000)",
+          "over_tolerance_mm": 169.5,
+          "over_tau": 6.833,
+          "pass": false
+        }
+      ]
+    }
+  ]
+}

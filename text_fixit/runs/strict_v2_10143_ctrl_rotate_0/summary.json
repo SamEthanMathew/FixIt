@@ -1,0 +1,104 @@
+{
+  "condition": "strict_v2_10143_ctrl_rotate_0",
+  "prompt_set": "one_error_strict",
+  "model": "Qwen/Qwen3-VL-8B-Instruct",
+  "agent": "loop_qwen_full",
+  "modality": "image",
+  "contract": "batch",
+  "max_actions": 1,
+  "budget": 10,
+  "tau_frac": 0.015,
+  "problem_set": {
+    "n": 1,
+    "instances_path": "data/instances_std30.jsonl",
+    "mean_difficulty_D": 3.27
+  },
+  "trials": 1,
+  "solved": 0,
+  "success_rate": 0.0,
+  "iterations_when_solved": null,
+  "iterations_when_failed": {
+    "n": 1,
+    "min": 0,
+    "max": 0,
+    "median": 0,
+    "mean": 0.0
+  },
+  "ever_reached_threshold": 0,
+  "closest_approach_over_tau": {
+    "best": 3.27,
+    "mean": 3.27,
+    "median": 3.27
+  },
+  "by_fault_type": {
+    "rotate": {
+      "n": 1,
+      "solved": 0,
+      "mean_closest_over_tau": 3.27
+    }
+  },
+  "deviation_trajectory": [
+    {
+      "turn": 1,
+      "n": 1,
+      "mean_best_over_tau": 3.27,
+      "best_single_over_tau": 3.27,
+      "n_under_threshold": 0
+    }
+  ],
+  "wall_clock_s": 32.1,
+  "seconds_per_trial": {
+    "n": 1,
+    "min": 31.3,
+    "max": 31.3,
+    "median": 31.3,
+    "mean": 31.3
+  },
+  "turn_latency_s": {
+    "n": 15,
+    "min": 0.8,
+    "max": 1.3,
+    "median": 0.9,
+    "mean": 0.93
+  },
+  "tokens": {
+    "prompt": 61112,
+    "completion_visible": 708,
+    "thinking": 0,
+    "output_billed": 708,
+    "total": 61820,
+    "per_trial": 61820
+  },
+  "integrity": {
+    "invalid_actions": 15,
+    "api_giveup_trials": 0,
+    "images_sent_per_turn": [
+      2
+    ]
+  },
+  "per_problem": [
+    {
+      "slot": "trial_01",
+      "id": "10143_ctrl_rotate_0",
+      "fault_type": "rotate",
+      "ground_truth": "ROTATE(P2, Z, -23.7176)",
+      "tau_mm": 14.6,
+      "initial_deviation_mm": 47.9,
+      "passed": false,
+      "iterations": 0,
+      "final_over_tolerance_mm": 33.249,
+      "final_over_tau": 3.27,
+      "closest_over_tau": 3.27,
+      "seconds": 31.3,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "NO_FIX() [auto]",
+          "over_tolerance_mm": 33.2,
+          "over_tau": 3.27,
+          "pass": false
+        }
+      ]
+    }
+  ]
+}

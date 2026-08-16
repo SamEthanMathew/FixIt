@@ -1,0 +1,245 @@
+{
+  "condition": "strict_v3_10143_ctrl_rotate_0",
+  "prompt_set": "one_error_strict",
+  "model": "Qwen/Qwen3-VL-8B-Instruct",
+  "agent": "loop_qwen_full",
+  "modality": "image",
+  "contract": "batch",
+  "max_actions": 1,
+  "budget": 10,
+  "tau_frac": 0.015,
+  "problem_set": {
+    "n": 1,
+    "instances_path": "data/instances_std30.jsonl",
+    "mean_difficulty_D": 3.27
+  },
+  "trials": 1,
+  "solved": 0,
+  "success_rate": 0.0,
+  "iterations_when_solved": null,
+  "iterations_when_failed": {
+    "n": 1,
+    "min": 10,
+    "max": 10,
+    "median": 10,
+    "mean": 10.0
+  },
+  "ever_reached_threshold": 0,
+  "closest_approach_over_tau": {
+    "best": 3.29,
+    "mean": 3.29,
+    "median": 3.29
+  },
+  "by_fault_type": {
+    "rotate": {
+      "n": 1,
+      "solved": 0,
+      "mean_closest_over_tau": 3.29
+    }
+  },
+  "deviation_trajectory": [
+    {
+      "turn": 1,
+      "n": 1,
+      "mean_best_over_tau": 6.95,
+      "best_single_over_tau": 6.95,
+      "n_under_threshold": 0
+    },
+    {
+      "turn": 2,
+      "n": 1,
+      "mean_best_over_tau": 3.43,
+      "best_single_over_tau": 3.43,
+      "n_under_threshold": 0
+    },
+    {
+      "turn": 3,
+      "n": 1,
+      "mean_best_over_tau": 3.37,
+      "best_single_over_tau": 3.37,
+      "n_under_threshold": 0
+    },
+    {
+      "turn": 4,
+      "n": 1,
+      "mean_best_over_tau": 3.37,
+      "best_single_over_tau": 3.37,
+      "n_under_threshold": 0
+    },
+    {
+      "turn": 5,
+      "n": 1,
+      "mean_best_over_tau": 3.37,
+      "best_single_over_tau": 3.37,
+      "n_under_threshold": 0
+    },
+    {
+      "turn": 6,
+      "n": 1,
+      "mean_best_over_tau": 3.31,
+      "best_single_over_tau": 3.31,
+      "n_under_threshold": 0
+    },
+    {
+      "turn": 7,
+      "n": 1,
+      "mean_best_over_tau": 3.31,
+      "best_single_over_tau": 3.31,
+      "n_under_threshold": 0
+    },
+    {
+      "turn": 8,
+      "n": 1,
+      "mean_best_over_tau": 3.31,
+      "best_single_over_tau": 3.31,
+      "n_under_threshold": 0
+    },
+    {
+      "turn": 9,
+      "n": 1,
+      "mean_best_over_tau": 3.31,
+      "best_single_over_tau": 3.31,
+      "n_under_threshold": 0
+    },
+    {
+      "turn": 10,
+      "n": 1,
+      "mean_best_over_tau": 3.29,
+      "best_single_over_tau": 3.29,
+      "n_under_threshold": 0
+    },
+    {
+      "turn": 11,
+      "n": 1,
+      "mean_best_over_tau": 3.29,
+      "best_single_over_tau": 3.29,
+      "n_under_threshold": 0
+    }
+  ],
+  "wall_clock_s": 25.7,
+  "seconds_per_trial": {
+    "n": 1,
+    "min": 24.8,
+    "max": 24.8,
+    "median": 24.8,
+    "mean": 24.8
+  },
+  "turn_latency_s": {
+    "n": 11,
+    "min": 1.1,
+    "max": 1.6,
+    "median": 1.2,
+    "mean": 1.23
+  },
+  "tokens": {
+    "prompt": 48695,
+    "completion_visible": 637,
+    "thinking": 0,
+    "output_billed": 637,
+    "total": 49332,
+    "per_trial": 49332
+  },
+  "integrity": {
+    "invalid_actions": 0,
+    "api_giveup_trials": 0,
+    "images_sent_per_turn": [
+      2,
+      4
+    ]
+  },
+  "per_problem": [
+    {
+      "slot": "trial_01",
+      "id": "10143_ctrl_rotate_0",
+      "fault_type": "rotate",
+      "ground_truth": "ROTATE(P2, Z, -23.7176)",
+      "tau_mm": 14.6,
+      "initial_deviation_mm": 47.9,
+      "passed": false,
+      "iterations": 10,
+      "final_over_tolerance_mm": 40.649,
+      "final_over_tau": 3.775,
+      "closest_over_tau": 3.29,
+      "seconds": 24.8,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "TRANSLATE(P2, X, -0.08000)",
+          "over_tolerance_mm": 87.1,
+          "over_tau": 6.945,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "ROTATE(P2, Y, -10.0000)",
+          "over_tolerance_mm": 35.5,
+          "over_tau": 3.426,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "SCALE(P2, Z, 0.900000)",
+          "over_tolerance_mm": 34.6,
+          "over_tau": 3.365,
+          "pass": false
+        },
+        {
+          "turn": 4,
+          "action": "SCALE(P2, Z, 0.850000)",
+          "over_tolerance_mm": 36.2,
+          "over_tau": 3.473,
+          "pass": false
+        },
+        {
+          "turn": 5,
+          "action": "TRANSLATE(P2, X, -0.03000)",
+          "over_tolerance_mm": 50.7,
+          "over_tau": 4.46,
+          "pass": false
+        },
+        {
+          "turn": 6,
+          "action": "ROTATE(P2, Y, -5.0000)",
+          "over_tolerance_mm": 33.9,
+          "over_tau": 3.311,
+          "pass": false
+        },
+        {
+          "turn": 7,
+          "action": "SCALE(P2, Z, 0.800000)",
+          "over_tolerance_mm": 38.3,
+          "over_tau": 3.612,
+          "pass": false
+        },
+        {
+          "turn": 8,
+          "action": "SCALE(P2, Z, 0.750000)",
+          "over_tolerance_mm": 40.6,
+          "over_tau": 3.775,
+          "pass": false
+        },
+        {
+          "turn": 9,
+          "action": "TRANSLATE(P2, X, -0.02000)",
+          "over_tolerance_mm": 44.2,
+          "over_tau": 4.02,
+          "pass": false
+        },
+        {
+          "turn": 10,
+          "action": "ROTATE(P2, Y, -3.0000)",
+          "over_tolerance_mm": 33.5,
+          "over_tau": 3.286,
+          "pass": false
+        },
+        {
+          "turn": 11,
+          "action": "SCALE(P2, Z, 0.750000)",
+          "over_tolerance_mm": 40.6,
+          "over_tau": 3.775,
+          "pass": false
+        }
+      ]
+    }
+  ]
+}

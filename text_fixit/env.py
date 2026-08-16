@@ -178,6 +178,7 @@ class FridgeRepairEnv:
         self._eval_seq = 0         # candidate filenames must be UNIQUE -- see _evaluate_specs
         self._img_cache = {}       # state key -> [PIL images] (a state is deterministic per key)
         self._annotated = None
+        self._last_images = []     # views most recently shown -> re-sent on an INVALID ACTION turn
         # baseline reference: the ORIGINAL broken part geometry (link frame), shown every turn
         self._broken_states = _part_states(self.broken, self.id_map)
         if self.state_modality == "image":
@@ -199,8 +200,14 @@ class FridgeRepairEnv:
         assert not self.terminal, "episode already terminal"
         if not parsed["valid"]:
             self.invalid_count += 1
+            # An unparseable reply must not also blind the model. This observation used to carry no
+            # "images" key at all, so run_episode's `obs.get("images", [])` sent ZERO images on the
+            # turn after every malformed output -- 203/203 of the image-less turns in the std30 Qwen
+            # arms followed a parse error. On a model that emits prose instead of the action grammar
+            # that is a doom loop: bad format -> blind -> worse format. Re-show the views it had.
             return ({"text": f"INVALID ACTION: {parsed['error']}", "eval": None,
-                     "invalid": True}, False, {"error": parsed["error"]})
+                     "invalid": True, "images": list(self._last_images)},
+                    False, {"error": parsed["error"]})
 
         actions = parsed["actions"]
         mode = parsed["mode"]
@@ -355,13 +362,20 @@ class FridgeRepairEnv:
     def _obs_images(self, ev, reset=False):
         """Images attached to an observation: the ORIGINAL broken object as the 'before', then the
         current candidate as the 'after'. Reset shows the labelled part view + the broken view.
-        Empty for the text conditions."""
+        Empty for the text conditions.
+
+        The result is cached in _last_images so the INVALID-ACTION observation in step() can re-show
+        the views the model was already looking at instead of sending it a blind turn."""
         if self.state_modality != "image":
+            self._last_images = []
             return []
         broken = list(getattr(self, "_broken_views", []))
         if reset:
-            return ([self._annotated] if self._annotated is not None else []) + broken
-        return broken + list(ev.get("images", []))
+            out = ([self._annotated] if self._annotated is not None else []) + broken
+        else:
+            out = broken + list(ev.get("images", []))
+        self._last_images = list(out)
+        return out
 
     def _render(self, ev, header, reset=False):
         lines = [header, ""]

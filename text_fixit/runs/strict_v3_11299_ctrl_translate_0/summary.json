@@ -1,0 +1,147 @@
+{
+  "condition": "strict_v3_11299_ctrl_translate_0",
+  "prompt_set": "one_error_strict",
+  "model": "Qwen/Qwen3-VL-8B-Instruct",
+  "agent": "loop_qwen_full",
+  "modality": "image",
+  "contract": "batch",
+  "max_actions": 1,
+  "budget": 10,
+  "tau_frac": 0.015,
+  "problem_set": {
+    "n": 1,
+    "instances_path": "data/instances_std30.jsonl",
+    "mean_difficulty_D": 5.19
+  },
+  "trials": 1,
+  "solved": 1,
+  "success_rate": 1.0,
+  "iterations_when_solved": {
+    "n": 1,
+    "min": 3,
+    "max": 3,
+    "median": 3,
+    "mean": 3.0
+  },
+  "iterations_when_failed": null,
+  "ever_reached_threshold": 1,
+  "closest_approach_over_tau": {
+    "best": 0.88,
+    "mean": 0.88,
+    "median": 0.88
+  },
+  "by_fault_type": {
+    "translate": {
+      "n": 1,
+      "solved": 1,
+      "mean_closest_over_tau": 0.88
+    }
+  },
+  "deviation_trajectory": [
+    {
+      "turn": 1,
+      "n": 1,
+      "mean_best_over_tau": 3.16,
+      "best_single_over_tau": 3.16,
+      "n_under_threshold": 0
+    },
+    {
+      "turn": 2,
+      "n": 1,
+      "mean_best_over_tau": 1.14,
+      "best_single_over_tau": 1.14,
+      "n_under_threshold": 0
+    },
+    {
+      "turn": 3,
+      "n": 1,
+      "mean_best_over_tau": 0.88,
+      "best_single_over_tau": 0.88,
+      "n_under_threshold": 1
+    },
+    {
+      "turn": 4,
+      "n": 1,
+      "mean_best_over_tau": 0.88,
+      "best_single_over_tau": 0.88,
+      "n_under_threshold": 1
+    }
+  ],
+  "wall_clock_s": 19.4,
+  "seconds_per_trial": {
+    "n": 1,
+    "min": 18.6,
+    "max": 18.6,
+    "median": 18.6,
+    "mean": 18.6
+  },
+  "turn_latency_s": {
+    "n": 15,
+    "min": 0.3,
+    "max": 2.0,
+    "median": 0.3,
+    "mean": 0.6
+  },
+  "tokens": {
+    "prompt": 66931,
+    "completion_visible": 391,
+    "thinking": 0,
+    "output_billed": 391,
+    "total": 67322,
+    "per_trial": 67322
+  },
+  "integrity": {
+    "invalid_actions": 12,
+    "api_giveup_trials": 0,
+    "images_sent_per_turn": [
+      2,
+      4
+    ]
+  },
+  "per_problem": [
+    {
+      "slot": "trial_01",
+      "id": "11299_ctrl_translate_0",
+      "fault_type": "translate",
+      "ground_truth": "TRANSLATE(P1, X, -0.12826)",
+      "tau_mm": 24.7,
+      "initial_deviation_mm": 128.3,
+      "passed": true,
+      "iterations": 3,
+      "final_over_tolerance_mm": -2.992,
+      "final_over_tau": 0.879,
+      "closest_over_tau": 0.88,
+      "seconds": 18.6,
+      "turns": [
+        {
+          "turn": 1,
+          "action": "TRANSLATE(P1, X, -0.05000)",
+          "over_tolerance_mm": 53.5,
+          "over_tau": 3.164,
+          "pass": false
+        },
+        {
+          "turn": 2,
+          "action": "TRANSLATE(P1, X, -0.10000)",
+          "over_tolerance_mm": 3.5,
+          "over_tau": 1.142,
+          "pass": false
+        },
+        {
+          "turn": 3,
+          "action": "TRANSLATE(P1, X, -0.15000)",
+          "over_tolerance_mm": -3.0,
+          "over_tau": 0.879,
+          "pass": true
+        },
+        {
+          "turn": 4,
+          "action": "TRANSLATE(P1, X, -0.15000)",
+          "over_tolerance_mm": -3.0,
+          "over_tau": 0.879,
+          "pass": true
+        }
+      ]
+    }
+  ]
+}

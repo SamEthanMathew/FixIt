@@ -263,6 +263,17 @@ class GeminiAgent(Agent):
                     "one returns ALL PASS; do not commit before then.")
         return self._obs_tmpl.safe_substitute(observation=obs["text"], commit_note=note)
 
+    # The retry is the one moment we KNOW the model just got the format wrong, so it is the highest
+    # -leverage place to show the format rather than name it. Naming it ("with a valid action") left
+    # Qwen3-VL-8B dropping the SIMULATE keyword on 21 of 33 retries; the corrected shape is spelled
+    # out literally instead.
+    _RETRY_HINT = ("Your previous output was invalid: {err}.\n"
+                   "Re-emit exactly one <think> block and one <act> block, in this shape:\n"
+                   "  <think>one sentence</think>\n"
+                   "  <act>SIMULATE TRANSLATE(P0, X, -0.06)</act>\n"
+                   "The word SIMULATE (or COMMIT) is literal and must be the first word inside "
+                   "<act>; only the call after it changes.")
+
     def act(self, ctx):
         env, obs = ctx["env"], ctx["obs"]
         system = self._system_prompt(env)
@@ -270,8 +281,7 @@ class GeminiAgent(Agent):
         if self.history == "full" and not self.oneshot:
             if ctx.get("retry_error"):
                 # same turn, correcting an invalid reply: the bad reply is already in the transcript
-                user = (f"Your previous output was invalid: {ctx['retry_error']}. "
-                        "Re-emit exactly one <think> and one <act> block with a valid action.")
+                user = self._RETRY_HINT.format(err=ctx["retry_error"])
                 self._messages.append(_msg("user", user))
             else:
                 user = self._obs_message(env, obs, ctx["budget_left"])
@@ -288,8 +298,7 @@ class GeminiAgent(Agent):
         # window3 (bounded) and oneshot: stateless single-message call
         step = self._step_prompt(env, obs, ctx["budget_left"])
         if ctx.get("retry_error"):
-            step += (f"\n\nYour previous output was invalid: {ctx['retry_error']}. "
-                     "Re-emit exactly one <think> and one <act> block with a valid action.")
+            step += "\n\n" + self._RETRY_HINT.format(err=ctx["retry_error"])
         imgs = list(obs.get("images", []))
         self.last_prompt = {"system": system, "user": step, "transcript_turns": 1,
                             "n_images": len(imgs)}
