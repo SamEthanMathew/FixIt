@@ -1,0 +1,5 @@
+$observation
+$commit_note
+
+Output your next action now (one <think> block and one <act> block). Write the action as literal
+TEXT inside the <act> tags - it is not a tool call or a function call.

@@ -1,0 +1,18 @@
+$observation
+
+Budget: $budget_left SIMULATE call(s) remaining$commit_note.
+
+Every probe you have run so far, with its result - never repeat one:
+$history
+
+You may ONLY target these parts: $targetable
+Operation/axis combinations you have NOT yet probed: $untried
+
+Reply with a <think> line then an <act> line; the first word inside <act> must be SIMULATE or COMMIT.
+First settle WHICH PART is faulty: the faulty part is the one whose probes CHANGE the reported error,
+even if they change it for the worse. A part whose probes leave the error identical is healthy - stop
+probing it. Then find the operation and axis, then tune the value.
+Compute every probe size from the reported error, never from a number in the instructions.
+While the fault is still unidentified, pick your next probe from the untried list above.
+But if ANY probe has already cut the error by half or more, the search is finished: reuse that
+exact operation, part and axis and change only the value until it passes.

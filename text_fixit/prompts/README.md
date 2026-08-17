@@ -1,3 +1,9 @@
+> **2026-08-16 — prompt sets reorganised.** The active set is **`one_error_search`** (11/30 on
+> std30, up from 1/30). It is self-contained: all four roles are present, so it also serves as
+> `BASE_PROMPT_SET`. The superseded sets — `one_error`, `one_error_dev`, `one_error_scale`,
+> `one_error_strict` — moved to `old_prompts/old_one_error_prompts/`. See
+> `docs/PROMPT_ITERATION_LOG.md` for how the search set was derived and why the earlier ones failed.
+
 # Prompts
 
 The standardized set is **`one_error`** — one fault, one action per turn, two closed views.

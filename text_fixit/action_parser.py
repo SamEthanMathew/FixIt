@@ -126,7 +126,7 @@ def _parse_call(op, arg_str, id_map, reveal_fixable=True):
 
 
 def parse(text, id_map, multi=False, allow_reset=False, allow_bare_commit=False,
-          reveal_fixable=True, max_actions=None):
+          reveal_fixable=True, max_actions=None, ruled_out=()):
     """Parse one model turn. `id_map` is part_table.build_part_table()[1].
 
     multi=True             accept an ordered LIST of calls (the batch contract)
@@ -166,6 +166,13 @@ def parse(text, id_map, multi=False, allow_reset=False, allow_bare_commit=False,
         if op == "RESET" and not allow_reset:
             return _err("RESET() is not available in this contract", think, backtrack)
         act, err = _parse_call(op, m.group(2), id_map, reveal_fixable=reveal_fixable)
+        # A part the simulator has already PROVEN healthy is as illegal a target as a non-fixable
+        # one. Saying so in the prompt was not enough -- Qwen kept probing a part whose error had
+        # read the identical value nine times -- so it is enforced here, and the reparse retry
+        # hands the model the reason.
+        if not err and act is not None and ruled_out and act.get("part_id") in ruled_out:
+            err = (f"part {act['part_id']} is ruled out: probing it left the error unchanged, so it "
+                   f"is not the faulty part. Target a different part.")
         if err:
             return _err(err, think, backtrack)
         actions.append(act)

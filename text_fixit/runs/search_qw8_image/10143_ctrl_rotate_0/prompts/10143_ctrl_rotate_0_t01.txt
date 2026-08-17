@@ -1,0 +1,161 @@
+===== SYSTEM =====
+OUTPUT FORMAT - THIS IS CHECKED BY A PARSER, NOT A HUMAN
+Every reply must be exactly these two lines, in this order:
+
+  <think>one or two sentences: what the last probe told you, and what you are testing next</think>
+  <act>SIMULATE TRANSLATE(P0, X, -0.06)</act>
+
+The word SIMULATE is LITERAL. Type it exactly, every turn. It is not a placeholder and it is not
+optional - only the call after it changes. These are all well-formed:
+
+  <act>SIMULATE TRANSLATE(P0, Z, -0.06)</act>
+  <act>SIMULATE TRANSLATE(P1, Y, 0.12)</act>
+  <act>SIMULATE ROTATE(P2, X, 12.5)</act>
+  <act>SIMULATE ROTATE(P0, Z, -20)</act>
+  <act>SIMULATE SCALE(P1, Y, 0.85)</act>
+  <act>SIMULATE SCALE(P2, X, 1.20)</act>
+
+ANY of the three operations can act on ANY of the three axes. The pairings above are arbitrary
+illustrations - do not read an operation-to-axis rule into them.
+
+Rules the parser enforces - a reply breaking any of them is DISCARDED and the turn is wasted:
+  - Your reply must contain an <act>...</act> line. Reasoning alone is not an answer.
+  - The first word inside <act> is SIMULATE (or COMMIT). Never omit it.
+  - Then exactly one call: TRANSLATE / ROTATE / SCALE / NO_FIX.
+  - Nothing outside the two tags. No preamble, no closing remark.
+
+You are repairing a malfunctioning articulated object in a physics simulator.
+
+OBJECT
+Category: Refrigerator          Instance: 10143_ctrl_rotate_0
+Intended function: Open and close the door: the door must swing to 90 degrees without colliding with the body or the other door, and must close flush.
+Success criteria: The faulty door is restored to its correct pose (within tolerance), the door still closes, and no parts interpenetrate.
+
+PARTS
+The object is decomposed into rigid parts. Exactly one part may be faulty.
+  id   label          role       fixable  size X,Y,Z (m)     joint
+  P0   door_1_right   revolute   yes      0.86,1.04,0.18     axis +Y at (0.38,0.72,0.30)
+  P1   body           base       no       0.86,1.53,0.85     —
+  P2   door_2_right   revolute   yes      0.97,0.76,0.12     axis +Y at (0.38,0.72,0.30)
+
+Part ids (P0, P1, ...) match the labels used in every action. The FIRST message includes an
+annotated view where each fixable door is recoloured and labelled with its P# so you can see which
+door is which.
+
+WHAT YOU SEE
+Each observation gives two rendered views, both with all doors CLOSED: the ORIGINAL broken object,
+and the result of the action you chose on the PREVIOUS turn.
+Each observation also reports how far the worst faulty part still is from correct, in millimetres, together with the tolerance it has to get under.
+USE THAT NUMBER. If value V took the error from A down to B, then V closed (A - B) of the gap, so the value that closes all of A is about V * A / (A - B).
+
+FRAME AND UNITS
+Right-handed object frame; the axes X, Y, Z are the coordinate axes in the part table (centres and
+sizes). Lengths in metres, rotations in degrees (right-hand rule).
+  TRANSLATE moves the whole part along an axis.
+  ROTATE turns the part in place about its own CENTROID, around the given axis.
+  SCALE resizes the part along an axis about its hinge-side edge.
+
+ACTION SPACE
+Emit exactly one action:
+  TRANSLATE(part, axis, value)   axis in {X,Y,Z}, value in metres,    any value in [-0.4, 0.4] m (continuous)
+  ROTATE(part, axis, value)      axis in {X,Y,Z}, value in degrees,   any value in [-60, 60] deg (continuous)
+  SCALE(part, axis, value)       axis in {X,Y,Z}, value a multiplier, any multiplier in [0.549, 1.822] (continuous)
+  NO_FIX()                       the object is already functional
+Only parts marked fixable=yes may be targeted.
+
+A repair is a single (type, part, axis, value) tuple - you may not compose two actions.
+
+TOLERANCE
+A repair passes if the faulty part is restored to within 1.5% of its size, the door still
+closes, and no parts interpenetrate.
+
+HOW TO SOLVE THIS - READ CAREFULLY
+Do NOT try to judge from the pictures which axis is wrong. That judgement is unreliable at this
+image size, and a wrong guess wastes the whole episode. **Use the simulator as your measuring
+instrument instead.** Every action is applied FRESH to the original broken object - attempts never
+stack - so each SIMULATE is an independent, repeatable experiment, and a bad probe costs you nothing
+but the turn.
+
+Let E be the error in millimetres reported for the current object, and let e = E / 1000 (the same
+distance in metres). Then:
+
+  STEP 0 - the probe size is ALWAYS computed from E. Never reuse a number from the examples above;
+     they are formatting illustrations and have nothing to do with your object.
+
+  STEP A - FIND THE FAULTY PART FIRST. Do this before hunting for the operation or the axis.
+     Probe each targetable part once and watch the reported error:
+       - the number CHANGES (up OR down)  -> this part is the faulty one. A healthy part cannot
+         change how wrong the faulty part is, so any movement at all identifies it.
+       - the number is EXACTLY the same as before -> this part is healthy. Stop probing it entirely.
+     An error that goes UP still identifies the right part. Do not abandon a part because your
+     first probe made things worse - that only means the direction or the operation was wrong.
+     Once the faulty part is known, use it in EVERY later probe.
+
+  STEP 1 - probe translation. Try  TRANSLATE(part, X, -e).
+     - error drops to near zero  -> that was the fault. COMMIT this action.
+     - error roughly DOUBLES     -> right axis, wrong sign. Try TRANSLATE(part, X, +e).
+     - error barely changes      -> the fault is not a translation along X. Move on.
+  STEP 2 - repeat STEP 1 for Y, then for Z.
+  STEP 3 - if no translation helped, the fault is a rotation or a size error. Probe
+     ROTATE(part, A, 20) for each axis A you have not ruled out, and SCALE(part, A, 0.8).
+     Again: a large drop in the error means you found the right operation and axis.
+  STEP 4 - LOCK ON. The moment any probe cuts the error by half or more, the search is OVER: you
+     have found the operation, the part and the axis. STOP EXPLORING. Every remaining turn must
+     reuse that same operation, part and axis and change ONLY the value. Going back to probing
+     other combinations after a big drop throws the episode away - this is the most costly mistake
+     available to you.
+     To pick the next value: if value V took the error from A down to B, then V closed (A - B) of
+     the gap, so the value that closes all of A is about V * A / (A - B). For a SCALE, if factor f
+     left the part still too large, the next factor is smaller than f, and vice versa.
+
+  WRONG PART? If two DIFFERENT probes leave the error EXACTLY unchanged, you are not acting on the
+     faulty part at all - moving a healthy part cannot change how wrong the faulty one is. When that
+     happens, stop probing that part and switch to another id from the targetable list. Check this
+     first: it is the cheapest mistake to detect and the most expensive to ignore.
+
+  SIZE ERRORS: a size fault can lie on any axis, so probe SCALE on X, Y and Z before ruling size out.
+     Do not settle for the axis you tried first.
+
+The number in the observation is the ground truth about your progress. Trust it over the pictures.
+Never repeat a probe you have already run - it will return the identical result and waste a turn.
+
+PROCEDURE
+KEEP GOING until a SIMULATE reports ALL PASS - do not stop early. You have up to 10 SIMULATE calls.
+Only COMMIT a repair a SIMULATE has reported ALL PASS:
+
+  <think>The last SIMULATE reported ALL PASS, so this is the repair.</think>
+  <act>COMMIT TRANSLATE(P0, X, -0.06)</act>
+
+Never commit a repair you have seen fail or have not simulated. Only if your last SIMULATE is spent
+without solving it, commit whichever attempt gave the lowest error.
+
+The action is literal TEXT inside the <act> tags. It is NOT a tool call or a function call - do not
+emit it through any tool-use mechanism.
+
+REMINDER - every reply needs an <act> line, and the word after "<act>" is SIMULATE or COMMIT.
+
+
+===== USER =====
+BROKEN OBJECT (initial)
+
+(attached: the labelled parts view, then the BROKEN object with all doors CLOSED)
+
+failed criteria: worst part off by 48 mm (tolerance 15 mm); a door does not close (jams at 15 deg); part collision (('body', 'door_2_right'), 87 mm over healthy)
+
+Budget: 10 SIMULATE call(s) remaining.
+
+Every probe you have run so far, with its result - never repeat one:
+  none yet
+
+You may ONLY target these parts: P0, P2
+Operation/axis combinations you have NOT yet probed: P0: TRANSLATE/X, TRANSLATE/Y, TRANSLATE/Z, ROTATE/X, ROTATE/Y, ROTATE/Z, SCALE/X, SCALE/Y, SCALE/Z | P2: TRANSLATE/X, TRANSLATE/Y, TRANSLATE/Z, ROTATE/X, ROTATE/Y, ROTATE/Z, SCALE/X, SCALE/Y, SCALE/Z
+
+Reply with a <think> line then an <act> line; the first word inside <act> must be SIMULATE or COMMIT.
+First settle WHICH PART is faulty: the faulty part is the one whose probes CHANGE the reported error,
+even if they change it for the worse. A part whose probes leave the error identical is healthy - stop
+probing it. Then find the operation and axis, then tune the value.
+Compute every probe size from the reported error, never from a number in the instructions.
+While the fault is still unidentified, pick your next probe from the untried list above.
+But if ANY probe has already cut the error by half or more, the search is finished: reuse that
+exact operation, part and axis and change only the value until it passes.
+

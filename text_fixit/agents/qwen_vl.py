@@ -88,6 +88,11 @@ class QwenVLAgent(GeminiAgent):
             self.name = "loop_qwen" if history == "window3" else "loop_qwen_full"
 
     # ------------------------------------------------------------------ transport
+    # The search prompt set asks the model to rule hypotheses out by comparing every probe's error.
+    # That is impossible through a 3-turn window, so the Qwen agent shows the whole log; the budget
+    # is 10 SIMULATEs, so this stays bounded.
+    HISTORY_TURNS = 12
+
     def _client_lazy(self):
         # No SDK client: a plain HTTP endpoint. requests is already a dependency of this env.
         import requests

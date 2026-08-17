@@ -69,7 +69,10 @@ def _magnitude_strings(instance):
             "scale_range": f"{sc[0]:.2f}-{sc[1]:.2f}"}
 
 
-BASE_PROMPT_SET = "one_error"          # fallback for any file an ablation set does not override
+BASE_PROMPT_SET = "one_error_search"   # fallback for any file an ablation set does not override
+# The superseded one_error / one_error_dev / one_error_scale / one_error_strict sets moved to
+# prompts/old_prompts/old_one_error_prompts/. one_error_search is self-contained (all four
+# roles present), so it is both the active set and a valid fallback base.
 
 
 def _load_set(prompt_set, role):
@@ -107,6 +110,33 @@ def _load(name):
             f"See prompts/README.md for the five required files and their variables.")
     with open(path) as f:
         return Template(f.read())
+
+
+def _healthy_by_probe(env):
+    """Parts the SIMULATOR has already proven healthy, deduced from the run's own history.
+
+    Exactly one part is faulty, and the reported error is the WORST part's error. So if two or more
+    probes that moved part P left that number bit-identical, P is not the worst part and cannot be
+    the faulty one. Qwen will not draw this inference itself -- in pilots it spent 5 of 11 probes on
+    a part whose error had already read the same value five times -- so the harness draws it and
+    narrows the candidate list. This deduces from observed outputs only; it never consults the
+    ground truth."""
+    import re as _re
+    from collections import defaultdict
+    seen = defaultdict(list)
+    for h in env.history:
+        if h.get("mode") != "SIMULATE" or not h.get("eval"):
+            continue
+        pids = set(_re.findall(r"\((P\d+),", h.get("action_str") or ""))
+        if len(pids) != 1:
+            continue                      # a multi-part action attributes nothing
+        seen[pids.pop()].append(round(float(h["eval"]["deviation_mm"]), 4))
+    base = round(float(env.reset_eval["deviation_mm"]), 4) if getattr(env, "reset_eval", None) else None
+    ruled = set()
+    for pid, devs in seen.items():
+        if len(devs) >= 2 and len(set(devs)) == 1 and (base is None or devs[0] == base):
+            ruled.add(pid)
+    return ruled
 
 
 def _msg(role, text, images=None):
@@ -218,14 +248,21 @@ class GeminiAgent(Agent):
             fixable_note=fixable_note, targetable=self._targetable(env),
             legal_pid=self._legal_pid(env),
             axis_legend=(getattr(env, 'axis_legend', None) or ''),
+            untried=self._untried(env),
             deviation_note=self._deviation_note(env),
             **_magnitude_strings(env.instance),
             thinking_note=self._thinking_note(),
             value_grid=VALUE_GRID_STR, angle_grid=ANGLE_GRID_STR, scale_grid=SCALE_GRID_STR,
             K=(0 if self.oneshot else env.budget))
 
+    # A search agent needs its FULL experiment log, not a sliding window. With the last-3 window,
+    # Qwen probed the same non-faulty part eight times and read the identical error every time --
+    # the flat response that identifies a wrong part -- but could never see the pattern, and re-ran
+    # two probes verbatim. HISTORY_TURNS caps it only to bound the prompt.
+    HISTORY_TURNS = 3
+
     def _history_text(self, env):
-        hist = [h for h in env.history if h["mode"] == "SIMULATE"][-3:]
+        hist = [h for h in env.history if h["mode"] == "SIMULATE"][-self.HISTORY_TURNS:]
         if not hist:
             return "  none yet"
         lines = []
@@ -246,6 +283,34 @@ class GeminiAgent(Agent):
         return "\n".join(lines)
 
     @staticmethod
+    def _untried(env):
+        """(operation, axis) pairs not yet probed, as literal text.
+
+        Qwen3-VL-8B cannot enumerate a search space on its own: across pilots it emitted axis Z zero
+        times in 11 probes even with Z in the worked examples, and silently dropped whole operations.
+        The harness already knows every probe run, so it lists what remains instead of relying on the
+        model to notice the gap. This is bookkeeping, not the answer -- which pair is correct is
+        still the model's to find."""
+        import re as _re
+        done = {}
+        for h in env.history:
+            if h.get("mode") != "SIMULATE":
+                continue
+            for m in _re.finditer(r"(TRANSLATE|ROTATE|SCALE)\((P\d+),\s*([XYZ])", h.get("action_str") or ""):
+                done.setdefault(m.group(2), set()).add((m.group(1), m.group(3)))
+        # Per PART: probing ROTATE/Z on a healthy part says nothing about the faulty one, so a
+        # global set silently marked the correct answer as already-tried and it was never probed.
+        out = []
+        for pid, pt in env.id_map.items():
+            if not pt.get("corruptible"):
+                continue
+            seen = done.get(pid, set())
+            left = [f"{op}/{ax}" for op in ("TRANSLATE", "ROTATE", "SCALE") for ax in "XYZ"
+                    if (op, ax) not in seen]
+            out.append(f"{pid}: " + (", ".join(left) if left else "all nine probed"))
+        return " | ".join(out) if out else "(none)"
+
+    @staticmethod
     def _targetable(env):
         """The part ids an action may legally name, as literal text ("P1, P2").
 
@@ -255,7 +320,12 @@ class GeminiAgent(Agent):
         the body it spent 27 turns targeting it. Naming the legal ids costs a few tokens and removes
         the guess."""
         ids = [pid for pid, pt in env.id_map.items() if pt.get("corruptible")]
-        return ", ".join(ids) if ids else "(none)"
+        ruled = _healthy_by_probe(env)
+        live = [p for p in ids if p not in ruled] or ids
+        if ruled and len(live) < len(ids):
+            return (", ".join(live) +
+                    f"  (ruled out by probe, do not target again: {', '.join(sorted(ruled))})")
+        return ", ".join(live) if live else "(none)"
 
     @staticmethod
     def _deviation_note(env):
@@ -293,7 +363,8 @@ class GeminiAgent(Agent):
         return self._step_tmpl.safe_substitute(
             observation=obs["text"], budget_left=(0 if self.oneshot else budget_left),
             commit_note=note, history=self._history_text(env),
-            targetable=self._targetable(env), legal_pid=self._legal_pid(env))
+            targetable=self._targetable(env), legal_pid=self._legal_pid(env),
+            untried=self._untried(env))
 
     def _obs_message(self, env, obs, budget_left):
         """A single turn's user message for history='full' (no re-injected history block -- the

@@ -33,6 +33,17 @@ def _parse_kwargs(env):
             "max_actions": getattr(env, "max_actions", None)}
 
 
+def _live_parse_kwargs(env):
+    """_parse_kwargs plus the parts the run's own probes have ruled out (recomputed each turn)."""
+    kw = _parse_kwargs(env)
+    try:
+        from agents.gemini import _healthy_by_probe
+        kw["ruled_out"] = frozenset(_healthy_by_probe(env))
+    except Exception:
+        kw["ruled_out"] = frozenset()
+    return kw
+
+
 def _gt_fix_actions(env):
     """The ground-truth repair rendered in the agent's own action language (for the trajectory log)."""
     seq = env.instance.get("gt_fix_sequence")
@@ -69,6 +80,7 @@ def run_episode(env, agent, instance, prompts=None, verbose=False, logger=None):
                "history": env.history, "retry_error": None}
         images_sent = list(obs.get("images", []))
         raw = agent.act(ctx)
+        pkw = _live_parse_kwargs(env)
         parsed = action_parser.parse(raw, env.id_map, **pkw)
         reparse = None
         if not parsed["valid"]:
