@@ -321,3 +321,44 @@ same prompt. The bookkeeping derives only from the run's own outputs and never c
 - Rotate remains the weakest type (2/10). Its faults are the largest in the set (D up to 14.1) and
   the probe magnitude for rotation is not derivable from the error the way translation's is.
 - The API models remain ahead (16–19/30), so this closes roughly half the gap, not all of it.
+
+---
+
+## Text modality — same search procedure, ported properly
+
+`one_error_search_text.txt` was written as a real port, not a copy: the image-specific framing was
+dropped (there are no pictures), and a numeric first pass was added that has no image equivalent —
+a size fault is directly readable by comparing the faulty door's size vector against the other
+door's, where the ratio furthest from 1 gives both the axis and the factor. The probe arithmetic,
+find-the-part-first rule, untried sweep and lock-on rule carry over unchanged.
+
+(The earlier `one_error_search_text.txt` was a loader stub — byte-identical to the archived base
+text prompt, with none of the search procedure. It existed only so the set was self-contained after
+the old base moved to `old_prompts/`. Anyone running `--modality text` against it would silently
+have tested the OLD prompt.)
+
+### Result
+
+| fault type | image | text | text baseline |
+|---|---|---|---|
+| translate | **5/10** | 3/10 | 0/10 |
+| rotate | **2/10** | 2/10 | 0/10 |
+| scale | **4/10** | 2/10 | 0/10 |
+| **total** | **11/30 (37%)** | **7/30 (23%)** | 0/30 |
+
+Text meets every target (≥20% overall, ≥2 per type) but lands behind image.
+
+### Two findings
+
+**The scale hypothesis was wrong.** I expected text to beat image on scale, because the geometry
+block hands the model the size ratio instead of making it probe for one. It went the other way,
+2/10 against 4/10. Reading the ratio did not beat measuring it.
+
+**Text identifies the PART far better — 87.6% vs 68.3% — and it does not help.** The coordinate
+table makes part identification nearly trivial, yet text still finishes lower. Part identification
+was not the binding constraint.
+
+**69 parse errors in text against 2 in image.** That is ~2.3 wasted turns per episode out of a
+10-turn budget and is the obvious next lever: the image prompt has been through nine iterations of
+format hardening, the text one is a first draft. Closing that gap is the same class of problem
+already solved once on the image side.

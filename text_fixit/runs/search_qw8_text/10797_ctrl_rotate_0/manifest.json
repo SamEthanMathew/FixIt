@@ -1,0 +1,54 @@
+{
+  "agent": "loop_qwen",
+  "model": "Qwen/Qwen3-VL-8B-Instruct",
+  "trial": 12,
+  "budget": 10,
+  "modality": "text",
+  "contract": "batch",
+  "max_actions": 1,
+  "tau_frac": 0.015,
+  "prompt_set": "one_error_search",
+  "instances_path": "/home/sammathew/Code/FixIt/text_fixit/data/instances_std30.jsonl",
+  "instance_ids": [
+    "10797_ctrl_rotate_0"
+  ],
+  "n_instances": 1,
+  "show_deviation": true,
+  "history_mode": "window3",
+  "temperature": 0.7,
+  "max_output_tokens": 4096,
+  "git_commit": "ece5a800cbde7d9369932b9aa050a7d021a0ab0b",
+  "versions": {
+    "python": "3.10.20",
+    "pybullet": "unknown",
+    "numpy": "1.26.4",
+    "PIL": "12.2.0",
+    "google.genai": "2.16.0"
+  },
+  "started_at": "2026-08-16T22:38:14-0400",
+  "instances_sha256": "10454927f3a1eef4afebcd7f53593fd10d20b3d1c0cd21ca92bb3e6ca3d77ae8",
+  "argv": [
+    "text_fixit/run_trials.py",
+    "--run",
+    "search_qw8_text",
+    "--instances",
+    "data/instances_std30.jsonl",
+    "--sweep",
+    "--agent",
+    "loop_qwen",
+    "--model",
+    "Qwen/Qwen3-VL-8B-Instruct",
+    "--modality",
+    "text",
+    "--max-actions",
+    "1",
+    "--deviation",
+    "on"
+  ],
+  "finished_at": "2026-08-16T22:38:34-0400",
+  "summary": {
+    "n": 1,
+    "solved": 1,
+    "seconds": 20.7
+  }
+}
