@@ -75,7 +75,9 @@ distance in metres). Then:
   STEP 0 - the probe size is ALWAYS computed from E. Never reuse a number from the examples above;
      they are formatting illustrations and have nothing to do with your object.
 
-  STEP A - FIND THE FAULTY PART FIRST. Do this before hunting for the operation or the axis.
+  STEP A - FIND THE FAULTY PART FIRST. If the turn prompt already marks a part CONFIRMED FAULTY,
+     that part is settled by probe evidence - skip this step entirely and target only that part.
+     Targeting a ruled-out part is rejected outright and wastes the turn. Do this before hunting for the operation or the axis.
      Probe each targetable part once and watch the reported error:
        - the number CHANGES (up OR down)  -> this part is the faulty one. A healthy part cannot
          change how wrong the faulty part is, so any movement at all identifies it.
@@ -112,6 +114,7 @@ distance in metres). Then:
 The number in the observation is the ground truth about your progress. Trust it over the pictures.
 Never repeat a probe you have already run - it will return the identical result and waste a turn.
 
+$found_note
 PROCEDURE
 KEEP GOING until a SIMULATE reports ALL PASS - do not stop early. You have up to $K SIMULATE calls.
 Only COMMIT a repair a SIMULATE has reported ALL PASS:

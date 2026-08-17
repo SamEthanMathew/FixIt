@@ -1,0 +1,166 @@
+# 11712_ctrl_scale_0  (control_single)
+
+- agent: `loop_qwen`  ·  contract: `batch`  ·  modality: `text`  ·  deviation: `True`
+- faults (1): scale  on ['link_1']
+- ground-truth fix sequence: SCALE(P1, X, 0.704582)
+- **terminal: PASS=False  score=0.016  deviation=93.1 mm  simulates=10**
+
+## turn 1  (SIMULATE)
+
+- budget left: 10  ·  latency: 1.7s
+
+**reasoning**
+
+> The last probe hasn't been run yet, so I need to start by identifying the faulty part. I'll probe P0 with a small translation in the Z-axis to see if the error changes, as this is a common fault in door alignment.
+
+**action** `TRANSLATE(P0, Z, -0.06000)`
+
+- PASS=False  score=0.0002  deviation=189.1 mm
+
+| part | deviation mm | within tol | closes |
+|---|---|---|---|
+| link_1 | 189.131 | False | True |
+
+## turn 2  (SIMULATE)
+
+- budget left: 9  ·  latency: 1.1s
+
+**reasoning**
+
+> The last probe didn't fix the issue, so I need to test P1's translation along Z to see if it’s the faulty part.
+
+**action** `TRANSLATE(P1, Z, -0.06000)`
+
+- PASS=False  score=0.0001  deviation=202.5 mm
+
+| part | deviation mm | within tol | closes |
+|---|---|---|---|
+| link_1 | 202.532 | False | True |
+
+## turn 3  (SIMULATE)
+
+- budget left: 8  ·  latency: 1.5s
+
+**reasoning**
+
+> The last probe confirmed P1 is faulty since the error increased, while P0’s previous probe showed a reduction. Next, I’ll probe P0’s TRANSLATE along X to verify if it’s the true fault or if P1 needs a different fix.
+
+**action** `TRANSLATE(P0, X, -0.06000)`
+
+- PASS=False  score=0.0002  deviation=189.1 mm
+
+| part | deviation mm | within tol | closes |
+|---|---|---|---|
+| link_1 | 189.131 | False | False |
+
+## turn 4  (SIMULATE)
+
+- budget left: 7  ·  latency: 1.2s
+
+**reasoning**
+
+> The last probe confirmed P1 is faulty; I’m testing TRANSLATE(P1, X, -0.06) to see if adjusting its X position reduces the error.
+
+**action** `TRANSLATE(P1, X, -0.06000)`
+
+- PASS=False  score=0.0  deviation=249.1 mm
+
+| part | deviation mm | within tol | closes |
+|---|---|---|---|
+| link_1 | 249.131 | False | True |
+
+## turn 5  (SIMULATE)
+
+- budget left: 6  ·  latency: 1.1s
+
+**reasoning**
+
+> The last probe confirmed P1 is faulty, and since no translation along X helped, I’ll probe translation along Y next to see if it reduces the error.
+
+**action** `TRANSLATE(P1, Y, -0.06000)`
+
+- PASS=False  score=0.0001  deviation=202.5 mm
+
+| part | deviation mm | within tol | closes |
+|---|---|---|---|
+| link_1 | 202.532 | False | True |
+
+## turn 6  (SIMULATE)
+
+- budget left: 5  ·  latency: 1.1s
+
+**reasoning**
+
+> The last probe confirmed P1 is faulty; now testing ROTATE(P1, X, 20) to see if rotation fixes the misalignment.
+
+**action** `ROTATE(P1, X, 20.0000)`
+
+- PASS=False  score=0.0  deviation=271.5 mm
+
+| part | deviation mm | within tol | closes |
+|---|---|---|---|
+| link_1 | 271.474 | False | True |
+
+## turn 7  (SIMULATE)
+
+- budget left: 4  ·  latency: 1.3s
+
+**reasoning**
+
+> The last probe confirmed P1 is faulty; now testing ROTATE(P1, Y, 20.0000) to see if rotation around Y reduces the error.
+
+**action** `ROTATE(P1, Y, 20.0000)`
+
+- PASS=False  score=0.0001  deviation=218.1 mm
+
+| part | deviation mm | within tol | closes |
+|---|---|---|---|
+| link_1 | 218.082 | False | True |
+
+## turn 8  (SIMULATE)
+
+- budget left: 3  ·  latency: 1.1s
+
+**reasoning**
+
+> The last probe confirmed P1 is faulty; now testing SCALE(P1, Y, 0.85) to correct its size mismatch.
+
+**action** `SCALE(P1, Y, 0.850000)`
+
+- PASS=False  score=0.0001  deviation=220.7 mm
+
+| part | deviation mm | within tol | closes |
+|---|---|---|---|
+| link_1 | 220.696 | False | True |
+
+## turn 9  (SIMULATE)
+
+- budget left: 2  ·  latency: 1.6s
+
+**reasoning**
+
+> The last probe on P1 with SCALE(Y, 0.85) barely changed the error (221mm), so it’s not a size fault on Y. I’ll try SCALE(P1, Z, 0.85) next to check if Z scaling fixes it.
+
+**action** `SCALE(P1, Z, 0.850000)`
+
+- PASS=False  score=0.0002  deviation=189.7 mm
+
+| part | deviation mm | within tol | closes |
+|---|---|---|---|
+| link_1 | 189.724 | False | True |
+
+## turn 10  (SIMULATE)
+
+- budget left: 1  ·  latency: 1.6s
+
+**reasoning**
+
+> The last probe confirmed P1 is faulty, and SCALE(P1, Z, 0.85) reduced error slightly; now testing SCALE(P1, X, 0.85) to see if scaling along X helps further reduce the 190mm error.
+
+**action** `SCALE(P1, X, 0.850000)`
+
+- PASS=False  score=0.0161  deviation=93.1 mm
+
+| part | deviation mm | within tol | closes |
+|---|---|---|---|
+| link_1 | 93.099 | False | True |

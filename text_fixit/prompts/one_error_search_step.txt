@@ -1,5 +1,6 @@
 $observation
 
+$found_note
 Budget: $budget_left SIMULATE call(s) remaining$commit_note.
 
 Every probe you have run so far, with its result - never repeat one:

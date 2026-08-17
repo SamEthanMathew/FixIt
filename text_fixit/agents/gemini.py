@@ -112,6 +112,33 @@ def _load(name):
         return Template(f.read())
 
 
+def _passing_action(env):
+    """The action string of the first SIMULATE that returned ALL PASS, or None."""
+    for h in env.history or []:
+        if h.get("mode") == "SIMULATE" and h.get("eval") and h["eval"].get("PASS"):
+            return h.get("action_str")
+    return None
+
+
+def _found_note(env):
+    """Unmissable instruction once a passing repair exists.
+
+    env.auto_commit_best() only fires when a SIMULATE is attempted with no budget left; an explicit
+    COMMIT of a worse action is taken at face value. So a found pass has to be surfaced, loudly."""
+    won = _passing_action(env)
+    if not won:
+        return ""
+    # Hand over BOTH lines, tags included. An earlier version showed only the <act> line and said
+    # "emit exactly this"; the model supplied a <think> sentence from elsewhere in the prompt and
+    # emitted it as bare prose with no tags at all -- 10 parse failures in one run.
+    return (f"\n*** ALL PASS ALREADY ACHIEVED with {won} ***\n"
+            f"The search is finished. Your entire reply must be exactly these two lines, tags "
+            f"included, and nothing else:\n"
+            f"<think>A SIMULATE reported ALL PASS, so this is the repair.</think>\n"
+            f"<act>COMMIT {won}</act>\n"
+            f"Do not probe anything further. Any other action throws away a solved episode.\n")
+
+
 def _healthy_by_probe(env):
     """Parts the SIMULATOR has already proven healthy, deduced from the run's own history.
 
@@ -248,7 +275,7 @@ class GeminiAgent(Agent):
             fixable_note=fixable_note, targetable=self._targetable(env),
             legal_pid=self._legal_pid(env),
             axis_legend=(getattr(env, 'axis_legend', None) or ''),
-            untried=self._untried(env),
+            untried=self._untried(env), found_note=self._found_note(env),
             deviation_note=self._deviation_note(env),
             **_magnitude_strings(env.instance),
             thinking_note=self._thinking_note(),
@@ -283,6 +310,10 @@ class GeminiAgent(Agent):
         return "\n".join(lines)
 
     @staticmethod
+    def _found_note(env):
+        return _found_note(env)
+
+    @staticmethod
     def _untried(env):
         """(operation, axis) pairs not yet probed, as literal text.
 
@@ -292,6 +323,12 @@ class GeminiAgent(Agent):
         model to notice the gap. This is bookkeeping, not the answer -- which pair is correct is
         still the model's to find."""
         import re as _re
+        # A passing repair ends the search. Listing untried combinations after that actively invites
+        # the model to keep sweeping -- in the text run it found ALL PASS at turn 4, swept five more
+        # combinations, then committed the last (failing) one.
+        won = _passing_action(env)
+        if won:
+            return f"(none - a PASSING repair has already been found: {won}. Commit it.)"
         done = {}
         for h in env.history:
             if h.get("mode") != "SIMULATE":
@@ -322,6 +359,14 @@ class GeminiAgent(Agent):
         ids = [pid for pid, pt in env.id_map.items() if pt.get("corruptible")]
         ruled = _healthy_by_probe(env)
         live = [p for p in ids if p not in ruled] or ids
+        # Exactly one fault: once every other candidate is ruled out, the faulty part is DETERMINED,
+        # not merely likely. Saying so removes the choice. Qwen otherwise keeps re-selecting a part
+        # its own probes disproved -- 67 of 69 first-attempt parse failures in the text run were
+        # exactly this, each costing a retry call.
+        if ruled and len(live) == 1:
+            return (f"{live[0]}  <-- CONFIRMED FAULTY. Probing ruled out "
+                    f"{', '.join(sorted(ruled))}: moving them left the error unchanged, and only one "
+                    f"part is faulty. Every remaining action MUST target {live[0]}.")
         if ruled and len(live) < len(ids):
             return (", ".join(live) +
                     f"  (ruled out by probe, do not target again: {', '.join(sorted(ruled))})")
@@ -364,7 +409,7 @@ class GeminiAgent(Agent):
             observation=obs["text"], budget_left=(0 if self.oneshot else budget_left),
             commit_note=note, history=self._history_text(env),
             targetable=self._targetable(env), legal_pid=self._legal_pid(env),
-            untried=self._untried(env))
+            untried=self._untried(env), found_note=self._found_note(env))
 
     def _obs_message(self, env, obs, budget_left):
         """A single turn's user message for history='full' (no re-injected history block -- the

@@ -1,0 +1,1 @@
+{"episode": "12042_ctrl_rotate_0", "turn": 1, "kind": "parse", "error": "part P0 is not fixable", "raw": "<think>The last probe didn't change the error, so P1 is not faulty; the fault must be in P0. Now testing translation along Y on P0.</think><act>SIMULATE TRANSLATE(P0, Y, -0.207)</act>"}

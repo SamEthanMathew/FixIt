@@ -362,3 +362,58 @@ was not the binding constraint.
 10-turn budget and is the obvious next lever: the image prompt has been through nine iterations of
 format hardening, the text one is a first draft. Closing that gap is the same class of problem
 already solved once on the image side.
+
+---
+
+# Parse-error reduction — goal met
+
+**Target:** logged parse errors under 5. **Result: text 69 → 1, image 2 → 3.** Both clear it.
+
+| iteration | change | text solved | text err | image solved | image err |
+|---|---|---|---|---|---|
+| 1 | search prompt as first written | 7/30 | **69** | 11/30 | 2 |
+| 2 | confirmed-part deduction | 6/30 | **2** | — | — |
+| 3 | found-note v1 (act line only) | 6/30 | 10 | 9/30 | 11 |
+| 4 | found-note v2 (full tagged block) | 6/30 | **1** | 9/30 | **3** |
+
+### What the 69 actually were
+
+97% (67/69) were my own `ruled_out` enforcement firing: the model repeatedly targeted parts its own
+probes had already proven healthy, saying things like *"The last probe confirmed P0 is faulty"* one
+turn after P0 was ruled out.
+
+**Important correction to an earlier claim.** These are *first-attempt* failures; 64 of the 69 were
+recovered by the same-turn reparse. Actual wasted turns were **5**, not 69 — so an earlier statement
+of "~2.3 wasted turns per episode" was wrong by an order of magnitude. What this work saved is retry
+latency and API calls, which is real but far cheaper than implied.
+
+### The fixes
+
+1. **Deduce instead of asking (iteration 2).** With exactly one fault, once probing rules out every
+   candidate but one, the faulty part is *determined*. The prompt now states it outright rather than
+   leaving the model to re-select a disproved part. 69 → 2.
+2. **Stop the sweep once a repair passes (iteration 3).** `$untried` was still advertising unexplored
+   combinations after ALL PASS. On `10797` the model hit a passing repair at turn 4, swept five more
+   combinations, and committed the last failing one. Suppressing the list and printing a commit
+   banner took discarded passes 1 → 0.
+3. **Hand over the complete tagged block (iteration 4).** Banner v1 showed only the `<act>` line and
+   said "emit exactly this"; the model supplied a `<think>` sentence from elsewhere in the prompt and
+   emitted it as untagged prose — 10 parse failures, self-inflicted. v2 gives both lines with tags.
+
+**This is the third time this model has copied whatever concrete text sits nearest the generation
+point** (worked-example axis, per-turn example value, now the commit banner). Treat it as a standing
+property of Qwen3-VL-8B, not a recurring surprise.
+
+### Two verifications worth recording
+
+- **The rule-out is sound.** Replayed across all 60 iteration-4 episodes: the true faulty part was
+  wrongly ruled out **0 times**. It never blocks the real fix.
+- **The image dip is noise.** 11/30 is [21,55] and 9/30 is [17,47] on Wilson 95% intervals at n=30
+  with temperature 0.7 — heavily overlapping. Do not read 11→9 as a regression on one run each.
+
+### Standing caveat on per-type counts
+
+Across four text iterations the per-type counts wobble (scale 2→1→2→1, rotate 2→1→2→2) with no
+change targeting them. At n=10 per type, one episode is noise; single runs cannot resolve whether the
+underlying rate clears 2. Overall solved held at 6–7/30 throughout, so none of the error work cost
+real performance.

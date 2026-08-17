@@ -83,7 +83,9 @@ distance in metres). Then:
      block. Never reuse a number from the examples above; they are formatting illustrations and
      have nothing to do with your object.
 
-  STEP A - FIND THE FAULTY PART FIRST. Probe each targetable part once and watch the error:
+  STEP A - FIND THE FAULTY PART FIRST. If the turn prompt already marks a part CONFIRMED FAULTY,
+     that part is settled by probe evidence - skip this step entirely and target only that part.
+     Targeting a ruled-out part is rejected outright and wastes the turn. Probe each targetable part once and watch the error:
        - the number CHANGES (up OR down)  -> this part is the faulty one. A healthy part cannot
          change how wrong the faulty part is, so any movement at all identifies it.
        - the number is EXACTLY the same as before -> this part is healthy. Stop probing it.
@@ -108,6 +110,7 @@ distance in metres). Then:
 
 Never repeat a probe you have already run - it will return the identical result and waste a turn.
 
+$found_note
 PROCEDURE
 KEEP GOING until a SIMULATE reports ALL PASS - do not stop early. You have up to $K SIMULATE calls.
 Only COMMIT a repair a SIMULATE has reported ALL PASS:
