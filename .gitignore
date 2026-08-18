@@ -24,3 +24,7 @@ build/
 dist/
 *.egg
 *.so
+
+# ASTRO SFT artifacts (generated: dataset JSONL and LoRA adapters)
+text_fixit/data/sft/
+text_fixit/runs_sft/

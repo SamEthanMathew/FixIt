@@ -1,5 +1,12 @@
 # Stage-2: Supervised Fine-Tuning
 
+> **SUPERSEDED 2026-08-18 by [`STAGE2_ASTRO_PLAN.md`](STAGE2_ASTRO_PLAN.md).** Three commits landed
+> after this was written (`ece5a80`, `72795dd`, `c852058`) and invalidate its premise: Qwen3-VL-8B is
+> at 11/30 image / 7/30 text under `one_error_search`, not 0–1/30, and the magnitude gate described
+> in §1 and §12 is closed (ratio 1.00x, not 0.15x). Its §5 gold target — `SIMULATE <gt_fix>` at every
+> turn — is ASTRO's *Direct-SFT control* and is demoted to ablation 1. See §8 of the new plan for the
+> full list of what carries over. Kept for the record.
+
 **Status:** plan only — not implemented.
 **Date:** 2026-08-16
 **Supersedes:** `Fixit_RL.pdf` §6 (model choice) — see "Divergence from the proposal".

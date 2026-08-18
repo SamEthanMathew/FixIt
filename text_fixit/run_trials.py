@@ -286,7 +286,14 @@ def main():
     args = ap.parse_args()
 
     if args.model:
-        os.environ["GEMINI_MODEL"] = args.model
+        # Route to the env var the chosen agent actually reads. QwenVLAgent takes QWEN_MODEL and
+        # GeminiAgent takes GEMINI_MODEL; setting only the latter meant `--agent loop_qwen --model X`
+        # silently evaluated the BASE model, which would score a fine-tuned adapter as if training
+        # had done nothing.
+        if "qwen" in args.agent:
+            os.environ["QWEN_MODEL"] = args.model
+        else:
+            os.environ["GEMINI_MODEL"] = args.model
     ipath = args.instances if os.path.isabs(args.instances) else os.path.join(HERE, args.instances)
     # --merge recombines finished shards and needs neither --instance nor --sweep, so it has to be
     # handled before the "give one or the other" validation below.

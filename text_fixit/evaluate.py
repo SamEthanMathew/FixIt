@@ -256,7 +256,8 @@ if __name__ == "__main__":
                     help="use the per-part palette and the favourable yaw even under --hard")
     ap.add_argument("--no-multi-fault-hint", dest="multi_fault_hint", action="store_false",
                     default=None, help="tell the agent exactly one part may be faulty")
-    ap.add_argument("--model", default=None, help="sets GEMINI_MODEL for this run")
+    ap.add_argument("--model", default=None,
+                    help="model id; routed to QWEN_MODEL for qwen agents, else GEMINI_MODEL")
     ap.add_argument("--thinking-budget", type=int, default=None,
                     help="cap per-turn thinking tokens (default: dynamic/uncapped). When set, the "
                          "budget is STATED to the model in the system prompt so it can ration its "
@@ -270,7 +271,12 @@ if __name__ == "__main__":
     args = ap.parse_args()
 
     if args.model:
-        os.environ["GEMINI_MODEL"] = args.model
+        # Route to the env var the chosen agent reads -- see run_trials.py. Agents are
+        # a comma-separated list here, so any qwen arm claims QWEN_MODEL.
+        if "qwen" in args.agents:
+            os.environ["QWEN_MODEL"] = args.model
+        else:
+            os.environ["GEMINI_MODEL"] = args.model
     if args.thinking_budget is not None:
         os.environ["FIXIT_THINKING_BUDGET"] = str(args.thinking_budget)
 
