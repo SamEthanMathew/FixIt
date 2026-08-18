@@ -154,20 +154,41 @@ def branch_nodes(term):
     return uniq
 
 
-def _sample_unique_cells(incorrect, k, rng):
+_OP_ORDER = {"TRANSLATE": 0, "ROTATE": 1, "SCALE": 2}
+
+
+def _sample_unique_cells(incorrect, k, rng, target_cell=None):
     """ASTRO's `sample_with_unique_answers`, at cell granularity (adaptation 1).
 
     Prefers branches that are informative to backtrack FROM: a probe on a healthy part (which left
     the error untouched) and a probe with a real but insufficient effect teach different lessons, so
     both kinds are eligible and the choice is random rather than by score -- picking the k
     highest-Q failures would only ever show near-misses and never the wrong-part case.
+
+    PROCEDURE ORDER (review finding M5): the system prompt commands a sweep order -- translate,
+    then rotate, then scale (STEPS 1-3). Sampled freely, 18/78 std30 search traces probed
+    rotate/scale BEFORE finishing translate and then went back -- supervision that demonstrates
+    ignoring the procedure the same prompt states. Two corrections: prefer failed cells whose
+    operation does not come AFTER the target's in the sweep (so the trace never leapfrogs the
+    winning operation), and emit the chosen branches in sweep order.
     """
     by_cell = {}
     for n in incorrect:
         by_cell.setdefault(n.cell, []).append(n)
     cells = sorted(by_cell, key=lambda c: (c[0], c[1], c[2]))
     rng.shuffle(cells)
-    return [rng.choice(by_cell[c]) for c in cells[:k]]
+    if target_cell is not None:
+        t_ord = _OP_ORDER.get(target_cell[1], 3)
+        pref = [c for c in cells if _OP_ORDER.get(c[1], 3) <= t_ord]
+        # STRICT, not merely preferred: a failed branch whose operation comes after the target's
+        # forces the trace to return to an earlier operation at the end -- with a TRANSLATE target
+        # that is a violation by construction. Sacrificing branch diversity (fewer eligible cells
+        # can shrink k) is the right trade; falling back to later ops re-creates the violation.
+        if pref:
+            cells = pref
+    chosen = cells[:k]
+    chosen.sort(key=lambda c: (_OP_ORDER.get(c[1], 3), c[2]))
+    return [rng.choice(by_cell[c]) for c in chosen]
 
 
 def linearize(root, k, rng, correct_node=None):
@@ -186,7 +207,8 @@ def linearize(root, k, rng, correct_node=None):
     # (adaptation 3). Prefer the SHORTEST passing path -- the search that found the repair with
     # fewest probes -- since Fixit_RL sec.7 scores simulator calls per solved episode.
     target = correct_node or min(correct, key=lambda n: len(n.ancestors()))
-    chosen = _sample_unique_cells([n for n in incorrect if n.cell != target.cell], k, rng)
+    chosen = _sample_unique_cells([n for n in incorrect if n.cell != target.cell], k, rng,
+                                  target_cell=target.cell)
 
     steps, seen = [], set()
     for branch_i, term in enumerate(chosen + [target]):
@@ -234,6 +256,54 @@ def sample_traces(root, k_mix=DEFAULT_K_MIX, seed=0):
                                              if s["backtrack"] == BACKTRACK_PART),
                     "n_probes": len(steps)})
     return out
+
+
+def direct_trace(root):
+    """Arm-2 "Direct" trace: the passing path only, entered at its first strictly-improving node.
+
+    ASTRO's Direct arm is "solutions that do not contain any self-reflection or backtracking"
+    (sec 4.3), and its Table 4 compares it against the search arm at MATCHED example counts. The
+    naive k=0 draw does NOT provide that here -- measured on std30, 21/26 shortest-path traces
+    contained a failed probe and 10/26 contained a worsening probe plus its sign-flip recovery.
+    This constructs the clean arm: winning cell, correct sign, its refine chain, nothing else.
+    It is oracle-guided by necessity (nothing observable names the right cell without probing) and
+    must be REPORTED as such; count-matching against the astro arm is done by training steps, not
+    by duplicating rows -- see the plan.
+    """
+    correct, _ = terminals(root)
+    if not correct:
+        return []
+    target = min(correct, key=lambda n: len(n.ancestors()))
+    path = [n for n in target.path_from_root() if n.simulated]
+    dev0 = root.dev
+    start = 0
+    for i, n in enumerate(path):
+        if n.dev < dev0 - 1e-9:
+            start = i
+            break
+    return [{"node": n, "backtrack": None, "branch": 0} for n in path[start:]]
+
+
+def exhausted_trace(root, budget):
+    """Budget-exhaustion supervision from a tree with NO passing terminal (review finding M2).
+
+    19.3%% of real eval turns sit at turn index >= 9 and 24/30 base episodes exhaust the budget,
+    yet linearized traces always end in a PASS by turn ~8 -- so the states that decide hard
+    episodes had ZERO training mass, and the prompt's own rule ("commit whichever attempt gave the
+    lowest error" once the last SIMULATE is spent) had no example. This takes the expert's probes
+    in tree order, exactly `budget` of them, and ends in that commit. Returns (steps, best_node)
+    or (None, None) when the tree passed or has too few probes to exhaust the budget honestly.
+    """
+    probed = [n for n in root.descendants() if n.simulated]
+    if any(n.passes for n in probed) or len(probed) < budget:
+        return None, None
+    take = probed[:budget]                      # DFS order ~ the expert's probe order
+    best = min(take, key=lambda n: n.dev)
+    steps = []
+    for n in take:
+        bt = backtrack_kind(steps[-1]["node"], n) if steps else None
+        steps.append({"node": n, "backtrack": bt, "branch": len(steps)})
+    return steps, best
 
 
 def describe(trace):

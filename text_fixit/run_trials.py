@@ -35,6 +35,8 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import geom                                    # noqa: E402
 from env import FridgeRepairEnv                # noqa: E402
+from agents.gemini import BASE_PROMPT_SET      # noqa: E402  (manifest must record the
+#   agents' real default -- the stale 'one_error' literal mislabeled every unset-env run)
 from run_episode import _make_agent, run_episode   # noqa: E402
 from runlog import RunLogger                   # noqa: E402
 
@@ -279,6 +281,9 @@ def main():
     ap.add_argument("--max-actions", dest="max_actions", type=int, default=1)
     ap.add_argument("--budget", type=int, default=10)
     ap.add_argument("--deviation", default="off", choices=["on", "off"])
+    ap.add_argument("--seed", type=int, default=0,
+                    help="replicate offset for seeded agents (random): agent seed = seed*1000 + "
+                         "instance index. Default 0 reproduces the historical seeding exactly.")
     ap.add_argument("--hard", action="store_true")
     ap.add_argument("--reveal-fixable", dest="reveal_fixable", action="store_true", default=None)
     ap.add_argument("--price-in", type=float, default=None, help="USD per 1M prompt tokens")
@@ -298,7 +303,7 @@ def main():
     # --merge recombines finished shards and needs neither --instance nor --sweep, so it has to be
     # handled before the "give one or the other" validation below.
     if args.merge:
-        args.prompt_set = os.environ.get("FIXIT_PROMPT_SET", "one_error")
+        args.prompt_set = os.environ.get("FIXIT_PROMPT_SET", BASE_PROMPT_SET)
         merge(args.run, ipath, args)
         return
     if args.sweep:
@@ -311,7 +316,7 @@ def main():
         problems = [load_instance(ipath, args.instance)] * args.trials
     else:
         raise SystemExit("give --instance (repeat one problem) or --sweep (run the whole set)")
-    args.prompt_set = os.environ.get("FIXIT_PROMPT_SET", "one_error")
+    args.prompt_set = os.environ.get("FIXIT_PROMPT_SET", BASE_PROMPT_SET)
 
     for q in problems:
         tf = q.get("tau_frac")
@@ -329,7 +334,7 @@ def main():
                               show_deviation=(args.deviation == "on"), action_contract=args.contract,
                               hard=args.hard, reveal_fixable=args.reveal_fixable,
                               max_actions=args.max_actions)
-        agent = _make_agent(args.agent, seed=i)
+        agent = _make_agent(args.agent, seed=args.seed * 1000 + i)
         logger = RunLogger(cond_dir, slot)
         logger.manifest(agent=args.agent, model=getattr(agent, "model", None), trial=i,
                         budget=args.budget, modality=args.modality, contract=args.contract,

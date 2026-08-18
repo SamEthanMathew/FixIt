@@ -183,7 +183,14 @@ def probe_value(op, axis, err_mm, ratios):
         return _clamp(op, -err_mm / 1000.0)
     if op == "ROTATE":
         return _clamp(op, ROTATE_PROBE_DEG)
-    return _clamp(op, ratios[axis])
+    r = ratios[axis]
+    # A ratio ~1.0 (doors match on this axis) would probe SCALE(part, A, 1.0) -- a NO-OP whose
+    # unchanged error then reads as "this cell is not the fault", a false inference (the probe
+    # tested nothing), and whose repeated base-equal readings can feed _healthy_by_probe toward
+    # ruling out the FAULTY part. Probe a real magnitude instead.
+    if abs(r - 1.0) < 0.05:
+        r = SCALE_PROBE_FALLBACK
+    return _clamp(op, r)
 
 
 def flip_value(op, value):
@@ -231,15 +238,22 @@ def refine_value(op, value, err_before, err_after):
 # ------------------------------------------------------------------ tree construction
 
 def _simulate(env, node, pid, op, axis, value, id_map):
-    """Attach one simulator call to `node`, in the agent's own action language."""
-    from action_parser import parse
+    """Attach one simulator call to `node`, in the agent's own action language.
+
+    node.call is rendered by action_parser.format_call FROM THE PARSED SPEC, never by a local
+    f-string: the review found a local .5f SCALE format diverging from format_call's .6f, which
+    put a call text in 24/104 COMMIT targets that byte-mismatched the $history lines and the
+    found_note text in the very prompt the example trains against. Rendering from the parsed
+    spec also folds in any clamping the parser applied, so the trace states the action that
+    actually ran."""
+    from action_parser import format_call, parse
     ax = _AXIS_INV[axis]
-    call = f"{op}({pid}, {ax}, {value:.5f})" if op != "ROTATE" else \
-           f"{op}({pid}, {ax}, {value:.4f})"
-    res = parse(f"<act>SIMULATE {call}</act>", id_map, multi=True)
+    probe = f"{op}({pid}, {ax}, {value:.6f})"
+    res = parse(f"<act>SIMULATE {probe}</act>", id_map, multi=True)
     if not res["valid"]:
         return None
     spec = res["actions"][0]["spec"]
+    call = format_call(spec, pid)
     ev = env._evaluate_specs([spec], call)
     node.call, node.ev, node.dev = call, ev, float(ev["deviation_mm"])
     node.value = value

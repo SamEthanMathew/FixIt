@@ -271,9 +271,18 @@ if __name__ == "__main__":
     args = ap.parse_args()
 
     if args.model:
-        # Route to the env var the chosen agent reads -- see run_trials.py. Agents are
-        # a comma-separated list here, so any qwen arm claims QWEN_MODEL.
-        if "qwen" in args.agents:
+        # Route to the env var the chosen agent reads -- see run_trials.py. Agents are a
+        # comma-separated list here; a MIXED qwen+gemini list with one --model would set only one
+        # side and silently run the other arm on whatever model its env default names, so it is
+        # refused outright.
+        names = [a.strip() for a in args.agents.split(",")]
+        qwen = [a for a in names if "qwen" in a]
+        gem = [a for a in names if "gemini" in a]
+        if qwen and gem:
+            raise SystemExit("--model with a mixed qwen+gemini agent list is ambiguous: only one "
+                             "backend would receive the model name. Run the two backends as "
+                             "separate invocations.")
+        if qwen:
             os.environ["QWEN_MODEL"] = args.model
         else:
             os.environ["GEMINI_MODEL"] = args.model

@@ -116,9 +116,10 @@ Nothing in a trace is derivable only from `instance["gt_fix"]`.
 | trees with a passing terminal | **26/30 (87%)** — ASTRO's own yield was 14.0K/20.7K = 68% |
 | by fault type | translate **10/10**, rotate **9/10**, scale **7/10** |
 | simulator calls per tree | mean 17.5, max 20, ~2.7 s/instance |
-| traces | 104 = **26 direct (k=0) + 78 search (k≥1)** — ASTRO's 1:3 mix |
-| examples | 551 turns, **0 dropped** by the three verification gates |
-| token length | prompt p99 3,113 / max 3,173; **total max 3,211**, 0/551 over 4,096 |
+| traces | 101 = **26 direct (k=0) + 75 search (k≥1)** — ASTRO's 1:3 mix — **+ 4 budget-exhaustion aux** |
+| examples | 571 turns (44 aux, reaching turn 11), **0 dropped** by the verification gates |
+| token length | prompt p99 3,113 / max 3,173; **total max ~3,2xx**, 0 over 4,096 |
+| supervision checks | COMMIT↔found_note byte-parity 101/101 · off-procedure traces 0/96 · no-op probes 0 · rounding mismatches 0 |
 
 **Two findings from building it.**
 
@@ -159,43 +160,82 @@ would adapt the vision tower, re-enable its activation graph, and destabilise it
 
 ```bash
 # 0. instance sets (regenerated at the std30 regime; instances_train/test.jsonl are Aug-3,
-#    tau_frac=None, pre-tracking, and not comparable)
+#    tau_frac=None, pre-tracking, and not comparable).
+#    HELD-OUT USES --seed 100: generation is deterministic on (base, ctype, seed), so a seed-0
+#    test build would reproduce std30's 11 test rows verbatim -- the instances every prompt
+#    iteration was tuned on. make_sets refuses seeds < 100 for --split test.
 FIXIT_TAU_FRAC=0.015 conda run -n fixing python text_fixit/astro/make_sets.py \
     --split train --per-type 100 --out data/instances_astro_train.jsonl
 FIXIT_TAU_FRAC=0.015 conda run -n fixing python text_fixit/astro/make_sets.py \
-    --split test  --per-type 35  --out data/instances_astro_heldout.jsonl
+    --split test  --per-type 35 --seed 100 --out data/instances_astro_heldout.jsonl
 
-# 1. dataset  (~2.7 s/instance => ~40 min for 900; expect ~16k examples)
+# 1. datasets (~2.7 s/instance => ~40 min for 900; expect ~17k examples with the aux traces).
+#    build_dataset refuses non-train rows unless --expect-split any; the direct arm is built
+#    from the SAME trees.
 FIXIT_TAU_FRAC=0.015 conda run -n fixing python text_fixit/astro/build_dataset.py \
     --instances data/instances_astro_train.jsonl \
     --out data/sft/astro_train.jsonl --report
+FIXIT_TAU_FRAC=0.015 conda run -n fixing python text_fixit/astro/build_dataset.py \
+    --instances data/instances_astro_train.jsonl --arm direct \
+    --out data/sft/direct_train.jsonl --report
 
-# 2. gates before any real run
+# 2. STOP THE vLLM SERVER NOW -- the overfit gate in the next step is a full GPU load, and with
+#    the stage-1 server resident GPU0 has ~18 GB free against a ~21 GB need. GPU1 carries
+#    another user's job; do not use it.
+# 3. gates before any real run
 conda run -n qwenvl2 python text_fixit/astro/train_lora.py --print-targets
 conda run -n qwenvl2 python text_fixit/astro/train_lora.py \
     --data data/sft/astro_train.jsonl --overfit 32 --yes      # loss must reach ~0
 
-# 3. train  (stop vLLM first and take GPU0; GPU1 has another user's job)
+# 4. train both arms. MATCH TRAINING STEPS, not example counts: the direct arm has ~4x fewer
+#    examples from the same trees, so scale --epochs so steps (= examples x epochs / 8) match
+#    the astro arm's. ASTRO count-matched its Direct arm; steps-matching is our equivalent.
 conda run -n qwenvl2 python text_fixit/astro/train_lora.py \
     --data data/sft/astro_train.jsonl --out runs_sft/astro_qwen8_text --yes
+conda run -n qwenvl2 python text_fixit/astro/train_lora.py \
+    --data data/sft/direct_train.jsonl --out runs_sft/direct_qwen8_text \
+    --epochs <astro_examples/direct_examples> --yes
 
-# 4. evaluate, paired against the base model on the same held-out shapes
-bash text_fixit/astro/serve_lora.sh runs_sft/astro_qwen8_text
-FIXIT_TAU_FRAC=0.015 FIXIT_PROMPT_SET=one_error_search \
-conda run -n fixing python text_fixit/run_trials.py --agent loop_qwen --model astro \
-    --modality text --deviation on --instances data/instances_astro_heldout.jsonl --sweep \
-    --budget 10 --max-actions 1 --run astro_sft_heldout_text
-conda run -n fixing python text_fixit/funnel.py astro_sft_heldout_text astro_base_heldout_text
+# 5. evaluate. THREE seeded runs per arm (temperature 0.7 single runs swing +-2/30 on this
+#    benchmark -- PROMPT_ITERATION_LOG documents 11->9/30 on identical configs).
+#    serve_lora.sh refuses a busy port; after startup confirm the adapter is live:
+#      curl -s http://127.0.0.1:8001/v1/models | grep '"astro"'
+bash text_fixit/astro/serve_lora.sh text_fixit/runs_sft/astro_qwen8_text
+for i in 1 2 3; do
+  FIXIT_TAU_FRAC=0.015 FIXIT_PROMPT_SET=one_error_search \
+  conda run -n fixing python text_fixit/run_trials.py --agent loop_qwen --model astro \
+      --modality text --deviation on --instances data/instances_astro_heldout.jsonl --sweep \
+      --budget 10 --max-actions 1 --run astro_sft_heldout_text_r$i
+done
+# the paired BASE arm, same instances, same three seeds (serve the base with serve_qwen.sh):
+bash text_fixit/serve_qwen.sh   # after stopping the adapter server
+for i in 1 2 3; do
+  FIXIT_TAU_FRAC=0.015 FIXIT_PROMPT_SET=one_error_search \
+  conda run -n fixing python text_fixit/run_trials.py --agent loop_qwen \
+      --model Qwen/Qwen3-VL-8B-Instruct \
+      --modality text --deviation on --instances data/instances_astro_heldout.jsonl --sweep \
+      --budget 10 --max-actions 1 --run astro_base_heldout_text_r$i
+done
+conda run -n fixing python text_fixit/funnel.py astro_sft_heldout_text_r1 astro_base_heldout_text_r1
 ```
+
+**Analysis protocol (power is the binding constraint).** At n=105 over 13 correlated bases, the
+minimal detectable success delta is ~+18 points unpaired — and **+29–33 after deflating for
+per-base correlation** — while ASTRO's own SFT-stage effect was +4 to +7. So: (1) every
+comparison is **paired on shared instances** (McNemar over the 105, pooling the 3 seeds), which
+buys back most of the power; (2) report per-base clustered intervals, never raw Wilson alone;
+(3) treat the funnel (part/type/axis vs chance) as the primary endpoint, as before — it has
+per-action rather than per-episode n; (4) a delta smaller than the paired CI is reported as
+"not resolved at this n", not as a null.
 
 **Ablation arms**, mapping onto `Fixit_RL.pdf` §7 and ASTRO Table 4:
 
 | arm | how |
 |---|---|
-| 1. final-answer-only | `--k-mix 0` and target `gt_fix` directly (the old plan's design) |
-| 2. traces, no failed branches | `--k-mix 0` (direct solutions only) — this is ASTRO's **Direct-SFT** |
+| 1. final-answer-only | target `gt_fix` directly (the old plan's design) |
+| 2. traces, no failed branches | `--arm direct` — the constructed clean arm: winning cell, correct sign, refine chain only. **Not** `--k-mix 0`: the review measured 21/26 shortest-path traces containing failed probes and 10/26 containing sign-flip recoveries, so the naive k=0 draw is not ASTRO's Direct-SFT. Steps-matched to arm 4 via `--epochs` |
 | 3. failed branches, no backtrack labels | strip `<backtrack/>` and the reflection phrases |
-| 4. **full ASTRO** | default `--k-mix 0,1,1,2` |
+| 4. **full ASTRO** | default `--k-mix 0,1,1,2` + budget-exhaustion aux traces |
 | 5. RL after SFT | Stage 3 |
 | 6. RL without SFT | Stage 3 |
 
@@ -224,6 +264,47 @@ frozen, the named-target-modules warning, the overfit-32 gate, saving the proces
 and the honest framing that a null result is a real result.
 
 ---
+
+## 8b. Adversarial review, 2026-08-18 — findings and what changed
+
+A six-area review (expert math, trace quality, replay parity, training stack, serving, methodology)
+with empirical verification. Confirmed and fixed in code:
+
+- **Split guards** (was: nothing kept test shapes out of training; `build_dataset` even defaulted
+  to std30, which is 19 train / 11 test). `build_dataset` and `train_lora` now refuse non-train
+  rows; `make_sets` refuses `--split test` below seed 100 (seed-0 test rows are byte-identical to
+  std30's — the prompt-tuning benchmark).
+- **SCALE call format** (24/104 COMMIT targets byte-mismatched the `$history`/found_note text in
+  their own prompt: local `.5f` vs `format_call`'s `.6f`). `node.call` now rendered by
+  `format_call` from the parsed spec. All 101 pass-COMMIT completions verified byte-contained in
+  their prompt's found_note block; targets are two-line as the prompt demands.
+- **No-op probes + rounding** (SCALE ratio-1.0 probes asserted a false "not the fault" inference;
+  the rounded dev0 broke "exactly as before" on 10 turns). Ratios near 1 fall back to 0.85; exact
+  `root.dev` used throughout. Both counters now 0.
+- **Procedure order** (18/78 search traces probed rotate/scale then returned to translate,
+  contradicting STEP 1 in the same prompt). Failed-branch sampling is strictly limited to
+  operations not after the target's, emitted in sweep order: now 0/96.
+- **Coverage** (19.3% of real eval turns sit at index ≥9 with zero training mass; no
+  commit-best-attempt or late-budget examples existed). Unsolved trees now emit budget-exhaustion
+  aux traces ending in the prompt's commit-lowest-error rule (std30: +4 traces, +44 examples,
+  max turn 11).
+- **Incoherent think on high-Q dead branches** (a 90%-drop branch was abandoned with no stated
+  reason). `_evidence` now cites the disqualifying criteria (interpenetration / door no longer
+  closes) the observation already shows.
+- **Ops**: `run_trials` manifests recorded `prompt_set: one_error` (a set that no longer exists)
+  when the env var was unset — now records the agents' real default; `evaluate.py` refuses
+  `--model` with a mixed qwen+gemini agent list instead of silently routing one side;
+  `serve_lora.sh` refuses a busy port and documents the adapter-liveness check;
+  `meta.trace_id` added so per-trace audits don't collide.
+
+Verified as **non-issues**: vLLM 0.16.0 serves LoRA on Qwen3-VL (`SupportsLoRA` declared — no
+merge fallback needed); the vision tower's Linear names (`qkv/proj/linear_fc1/linear_fc2`) cannot
+collide with the 7 LLM LoRA suffixes; trace lengths (max 8 sims) sit safely under budget 10.
+
+Open, by design: the **mechanism-transfer question** (ASTRO's gain is in-context; window3 trains a
+per-state policy — arm 3 vs 4, off-trace probe recovery, and budget-20 runs are the discriminators)
+and **expert coverage** (26/30; the trained distribution is easier than eval — the aux traces
+mitigate, not remove).
 
 ## 9. Bugs fixed while building this
 

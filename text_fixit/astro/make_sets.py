@@ -107,8 +107,20 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", required=True, help="path relative to text_fixit/, or absolute")
     ap.add_argument("--allow-default-tau", action="store_true")
+    ap.add_argument("--allow-std30-overlap", action="store_true",
+                    help="permit a test-split build at a seed that reproduces std30 rows")
     args = ap.parse_args()
 
+    # build_control is deterministic on (base, ctype, seed): a test-split set generated at seed 0
+    # contains BYTE-IDENTICAL copies of instances_std30.jsonl's 11 test rows -- the instances every
+    # prompt iteration was tuned on, and whose failures drove the expert's own design. A held-out
+    # set must start at a disjoint seed (the plan uses --seed 100).
+    if args.split == "test" and args.seed < 100 and not args.allow_std30_overlap:
+        raise SystemExit(
+            f"--split test with --seed {args.seed}: seeds below 100 reproduce instances_std30's "
+            f"test rows verbatim (deterministic generation), contaminating the held-out set with "
+            f"the development benchmark. Use --seed 100 (or higher), or pass "
+            f"--allow-std30-overlap if the overlap is intended.")
     if not args.allow_default_tau and abs(geom.TAU_FRAC - TARGET_TAU_FRAC) > 1e-12:
         raise SystemExit(f"TAU_FRAC is {geom.TAU_FRAC}, expected {TARGET_TAU_FRAC}. "
                          f"Run with FIXIT_TAU_FRAC={TARGET_TAU_FRAC} so these instances are "

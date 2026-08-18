@@ -189,6 +189,8 @@ def main():
     ap.add_argument("--no-grad-checkpointing", action="store_true")
     ap.add_argument("--val-frac", type=float, default=0.05)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--allow-any-split", action="store_true",
+                    help="skip the train-split-only guard (throwaway experiments only)")
     ap.add_argument("--yes", action="store_true",
                     help="required to actually start training; without it this is a dry run")
     args = ap.parse_args()
@@ -215,6 +217,16 @@ def main():
 
     path = args.data if os.path.isabs(args.data) else os.path.join(HERE, args.data)
     rows = load_jsonl(path)
+    # Last line of defence for the held-out protocol: nothing upstream can guarantee the file on
+    # disk was built split-pure, so the trainer itself refuses test-split rows.
+    if not args.allow_any_split:
+        bad = sorted({r["meta"].get("instance", "?") for r in rows
+                      if r.get("meta", {}).get("split") != "train"})
+        if bad:
+            raise SystemExit(
+                f"{len(bad)} training examples are not from train-split shapes (e.g. {bad[:4]}). "
+                f"Refusing to train: this would void the held-out evaluation. "
+                f"Pass --allow-any-split only for throwaway experiments.")
     if args.overfit:
         rows = rows[:args.overfit]
         train_rows, val_rows, val_bases = rows, [], []

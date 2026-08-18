@@ -59,7 +59,8 @@ sys.path.insert(0, HERE)
 
 import action_parser                                   # noqa: E402
 import geom                                            # noqa: E402
-from astro.linearize import DEFAULT_K_MIX, sample_traces   # noqa: E402
+from astro.linearize import (DEFAULT_K_MIX, direct_trace, exhausted_trace,  # noqa: E402
+                             sample_traces)
 from astro.tree import build_tree                      # noqa: E402
 from astro.verbalize import verbalize                  # noqa: E402
 from env import FridgeRepairEnv                        # noqa: E402
@@ -89,10 +90,12 @@ def _check_prompt(text, where, iid):
         raise ValueError(f"{iid}: unresolved template vars in {where}: {sorted(set(bad))}")
 
 
-def replay(instance, turns, agent, budget, modality, deviation):
+def replay(instance, turns, agent, budget, modality, deviation, expect_pass=True):
     """Step the env through `turns`, returning one training example per turn.
 
     Returns (examples, error). `error` is None on success; on failure `examples` is discarded.
+    expect_pass=False marks a budget-exhaustion trace (linearize.exhausted_trace), whose final
+    COMMIT is the best failing attempt by design.
     """
     env = FridgeRepairEnv(budget=budget, state_modality=modality,
                           show_deviation=deviation, action_contract="batch", max_actions=1)
@@ -123,8 +126,10 @@ def replay(instance, turns, agent, budget, modality, deviation):
             obs, terminal, _ = env.step(parsed)
             if terminal:
                 ev = obs.get("eval") or {}
-                if not ev.get("PASS"):
+                if expect_pass and not ev.get("PASS"):
                     return [], "final COMMIT does not PASS"
+                if not expect_pass and ev.get("PASS"):
+                    return [], "exhaustion trace unexpectedly PASSed"
                 if turn is not turns[-1]:
                     return [], "episode terminated before the trace ended"
         if not env.terminal:
@@ -134,8 +139,31 @@ def replay(instance, turns, agent, budget, modality, deviation):
         env.close()
 
 
+def _example(row, r, j, n_turns, k, trace_backtracks, aux, trace_id=0):
+    return {
+        "prompt": [{"role": "system", "content": row["system"]},
+                   {"role": "user", "content": row["user"]}],
+        "completion": [{"role": "assistant", "content": row["assistant"]}],
+        "meta": {"instance": r["id"], "base": r["base"], "split": r.get("split"),
+                 # trace_id disambiguates the multiple traces one instance yields (two k=1 draws
+                 # are otherwise indistinguishable in meta, which broke a review audit).
+                 "trace_id": trace_id,
+                 "fault_type": r["fault_types"][0], "k": k,
+                 "trace_backtracks": trace_backtracks, "turn": j + 1,
+                 "n_turns": n_turns, "mode": row["mode"], "backtrack": row["backtrack"],
+                 "backtrack_kind": row["backtrack_kind"], "call": row["call"], "aux": aux,
+                 "D_over_tau": round(r["broken_deviation_mm"] / r["tau_mm"], 2)},
+    }
+
+
 def build(instances, agent, k_mix, budget, modality, deviation, seed,
-          max_refine=4, top_m=3, verbose=False):
+          max_refine=4, top_m=3, arm="astro", aux=True, verbose=False):
+    """arm "astro": ASTRO trace mix (k_mix) plus, when `aux`, one budget-exhaustion trace per
+    UNSOLVED tree (review finding M2: without them, late-budget still-failing states and the
+    commit-best-attempt rule have zero training mass while 19% of real eval turns live there).
+    arm "direct": the clean count-controlled Direct arm (linearize.direct_trace) -- no failed
+    probes, no flips, no aux; match training STEPS to the astro arm via --epochs, not by
+    duplicating rows."""
     examples, stats = [], collections.Counter()
     per_instance = []
     for r in instances:
@@ -144,12 +172,39 @@ def build(instances, agent, k_mix, budget, modality, deviation, seed,
         stats["trees"] += 1
         if not st["ok"]:
             stats["trees_invalid"] += 1
+            # M2: an unsolved tree still supervises the states hard episodes actually reach.
+            if arm == "astro" and aux and "faulty_pid" in st:
+                steps, best = exhausted_trace(root, budget)
+                if steps is not None:
+                    turns = verbalize(steps, root.dev, st["faulty_pid"],
+                                      commit_mode="best", best_node=best)
+                    rows, err = replay(r, turns, agent, budget, modality, deviation,
+                                       expect_pass=False)
+                    if err:
+                        stats["aux_dropped"] += 1
+                        stats[f"drop:{err[:44]}"] += 1
+                    else:
+                        stats["aux_traces"] += 1
+                        for j, row in enumerate(rows):
+                            examples.append(_example(row, r, j, len(rows), k=None,
+                                                     trace_backtracks=None, aux=True,
+                                                     trace_id=-1))
+                            stats["examples"] += 1
             per_instance.append({"id": r["id"], "ok": False, "reason": st["reason"]})
             continue
         stats["trees_valid"] += 1
         kept = 0
-        for tr in sample_traces(root, k_mix=k_mix, seed=seed):
-            turns = verbalize(tr["steps"], st["dev0_mm"], st["faulty_pid"])
+        if arm == "direct":
+            traces = [{"k": 0, "steps": direct_trace(root), "n_backtracks": 0,
+                       "n_part_backtracks": 0, "n_probes": 0}]
+            traces = [t for t in traces if t["steps"]]
+        else:
+            traces = sample_traces(root, k_mix=k_mix, seed=seed)
+        for ti, tr in enumerate(traces):
+            # root.dev, not st["dev0_mm"]: the stats value is rounded to 2 decimals, and the
+            # review measured 10 turns where that rounding broke the think text's "exactly as
+            # before" equality against the numbers in the model's own observation.
+            turns = verbalize(tr["steps"], root.dev, st["faulty_pid"])
             rows, err = replay(r, turns, agent, budget, modality, deviation)
             if err:
                 stats["traces_dropped"] += 1
@@ -161,19 +216,9 @@ def build(instances, agent, k_mix, budget, modality, deviation, seed,
             stats["part_backtracks"] += tr["n_part_backtracks"]
             kept += 1
             for j, row in enumerate(rows):
-                examples.append({
-                    "prompt": [{"role": "system", "content": row["system"]},
-                               {"role": "user", "content": row["user"]}],
-                    "completion": [{"role": "assistant", "content": row["assistant"]}],
-                    "meta": {"instance": r["id"], "base": r["base"], "split": r.get("split"),
-                             "fault_type": r["fault_types"][0], "k": tr["k"],
-                             "trace_backtracks": tr["n_backtracks"], "turn": j + 1,
-                             "n_turns": len(rows), "mode": row["mode"],
-                             "backtrack": row["backtrack"],
-                             "backtrack_kind": row["backtrack_kind"],
-                             "call": row["call"],
-                             "D_over_tau": round(r["broken_deviation_mm"] / r["tau_mm"], 2)},
-                })
+                examples.append(_example(row, r, j, len(rows), k=tr["k"],
+                                         trace_backtracks=tr["n_backtracks"], aux=False,
+                                         trace_id=ti))
                 stats["examples"] += 1
                 if row["backtrack"]:
                     stats["backtrack_turns"] += 1
@@ -198,6 +243,7 @@ def report(examples, stats):
     print(f"  traces dropped         {stats['traces_dropped']}")
     for k in sorted(k for k in stats if k.startswith("drop:")):
         print(f"      {k[5:]:48} {stats[k]}")
+    print(f"  aux exhaustion traces  {stats['aux_traces']}  (dropped {stats['aux_dropped']})")
     print(f"  examples (turns)       {stats['examples']}")
     print(f"  backtracks             {stats['backtracks']}  "
           f"(to part_selection: {stats['part_backtracks']})")
@@ -214,7 +260,17 @@ def report(examples, stats):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--instances", default="data/instances_std30.jsonl")
+    # Default is the TRAIN set, not std30: std30 mixes splits (19 train / 11 test shapes), and the
+    # review found nothing between instance file and adapter stopped test shapes entering training.
+    ap.add_argument("--instances", default="data/instances_astro_train.jsonl")
+    ap.add_argument("--expect-split", default="train", choices=["train", "test", "any"],
+                    help="refuse rows outside this split ('any' only for validation builds that "
+                         "will never be trained on)")
+    ap.add_argument("--arm", default="astro", choices=["astro", "direct"],
+                    help="astro = ASTRO trace mix + budget-exhaustion aux; direct = the clean "
+                         "count-controlled Direct ablation arm (no failures, no flips, no aux)")
+    ap.add_argument("--no-aux", dest="aux", action="store_false",
+                    help="astro arm only: skip the budget-exhaustion traces from unsolved trees")
     ap.add_argument("--out", default=None, help="JSONL destination (omit for a dry run)")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--seed", type=int, default=0)
@@ -247,6 +303,14 @@ def main():
     rows = [json.loads(l) for l in open(path)]
     if args.limit:
         rows = rows[:args.limit]
+    if args.expect_split != "any":
+        bad = sorted({r["id"] for r in rows if r.get("split") != args.expect_split})
+        if bad:
+            raise SystemExit(
+                f"{len(bad)} instances are not split={args.expect_split!r} (e.g. {bad[:4]}). "
+                f"Training on test-split shapes voids the held-out eval. Use a split-pure "
+                f"instance file (astro/make_sets.py), or --expect-split any for a validation "
+                f"build that will never be trained on.")
     k_mix = tuple(int(x) for x in args.k_mix.split(","))
 
     print(f"instances {len(rows)} from {path}")
@@ -259,7 +323,7 @@ def main():
     examples, stats, per_instance = build(rows, agent, k_mix, args.budget, args.modality,
                                           args.deviation == "on", args.seed,
                                           max_refine=args.max_refine, top_m=args.top_m,
-                                          verbose=args.verbose)
+                                          arm=args.arm, aux=args.aux, verbose=args.verbose)
     print(f"\nbuilt in {time.time() - t0:.0f}s")
 
     for e in examples[:args.show]:
@@ -280,6 +344,7 @@ def main():
         side = os.path.splitext(out)[0] + ".manifest.json"
         with open(side, "w") as f:
             json.dump({"instances_path": path, "n_instances": len(rows),
+                       "arm": args.arm, "aux": args.aux, "expect_split": args.expect_split,
                        "prompt_set": os.environ["FIXIT_PROMPT_SET"], "prompt_variant": variant,
                        "tau_frac": geom.TAU_FRAC, "modality": args.modality,
                        "deviation": args.deviation, "budget": args.budget, "k_mix": list(k_mix),

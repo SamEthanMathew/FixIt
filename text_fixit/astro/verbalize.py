@@ -79,6 +79,24 @@ def _is_flip(prev, node):
     return abs(node.value + prev.value) < 1e-9
 
 
+def _criteria_tail(prev):
+    """The non-deviation failure criteria of the previous state, if any -- review finding M6.
+
+    Without this, a branch that closed 90% of the deviation but interpenetrates reads as
+    "closing 90% of it ... this does not look like the right repair" with no stated reason: an
+    incoherent chain-of-thought on exactly the scale local-minimum branches. The observation the
+    model is conditioned on SHOWS these criteria, so the think text may cite them."""
+    ev = prev.ev or {}
+    bits = []
+    if ev.get("collides"):
+        bits.append("parts interpenetrate")
+    if ev.get("closes") is False:
+        bits.append("the door no longer closes")
+    if not bits or ev.get("PASS"):
+        return ""
+    return " But " + " and ".join(bits) + ", so this state cannot be the repair."
+
+
 def _evidence(prev, dev0, faulty_pid):
     """One sentence stating what the previous probe measured. Observation-only."""
     if abs(prev.dev - dev0) <= SAME_ERROR_MM:
@@ -92,7 +110,7 @@ def _evidence(prev, dev0, faulty_pid):
         return f"{prev.call} raised the error from {_n(dev0)} to {_n(prev.dev)}{tail}."
     drop = 100.0 * (dev0 - prev.dev) / dev0 if dev0 > 0 else 0.0
     return (f"{prev.call} cut the error from {_n(dev0)} to {_n(prev.dev)}, "
-            f"closing {drop:.0f}% of it.")
+            f"closing {drop:.0f}% of it.{_criteria_tail(prev)}")
 
 
 def _intent(prev, node, dev0):
@@ -112,6 +130,13 @@ def _intent(prev, node, dev0):
     if node.parent is prev:
         gap = dev0 - prev.dev
         k = dev0 / gap if abs(gap) > 1e-9 else float("nan")
+        if node.op == "SCALE":
+            # A scale is a MULTIPLIER: the correction composes, so the full fix is the factor
+            # raised to the power A/(A-B) (tree.refine_value works in log space). Stating "k times
+            # that value" here would show arithmetic that does not produce the action's number.
+            return (f"Factor {prev.value:.4g} closed {_n(gap)} of the {_n(dev0)} error; a "
+                    f"multiplier compounds, so the full correction is that factor raised to the "
+                    f"power {_n(dev0)}/{_n(gap)} = {k:.2f}: {node.call}.")
         return (f"Closing all of it needs about {prev.value:.4g} x {_n(dev0)} / {_n(gap)} "
                 f"= {k:.2f} times that value, so I will try {node.call}.")
     return f"I will test {node.op} on axis {ax} next: {node.call}."
@@ -121,11 +146,24 @@ def _backtrack_sentence(kind, node):
     return RESTART if kind == BACKTRACK_PART else GO_BACK.format(pid=node.pid)
 
 
-def verbalize(steps, dev0, faulty_pid):
+COMMIT_BEST_THINK = ("The budget is spent and no SIMULATE reported ALL PASS, so I commit the "
+                     "attempt with the lowest error.")
+
+
+def verbalize(steps, dev0, faulty_pid, commit_mode="pass", best_node=None):
     """Linearized steps -> the list of assistant turns for one training trace.
 
-    Returns [{"node", "think", "backtrack", "mode", "call", "text"}], ending with a COMMIT turn on
-    the passing node. Every SIMULATE turn corresponds to one env.step; the COMMIT terminates it.
+    Returns [{"node", "think", "backtrack", "mode", "call", "text"}], ending with a COMMIT turn.
+    Every SIMULATE turn corresponds to one env.step; the COMMIT terminates it.
+
+    commit_mode "pass" (default): the final step PASSed; the commit repeats it and matches the
+    found_note's demanded two-line reply byte for byte. commit_mode "best": a budget-exhaustion
+    trace (linearize.exhausted_trace) -- the commit takes `best_node`, exercising the prompt's
+    "commit whichever attempt gave the lowest error" rule, which otherwise has zero examples.
+
+    All turns are TWO lines (think line, newline, act line): the prompt's worked examples and the
+    found_note's "exactly these two lines" both show that shape, and the review found the earlier
+    single-line targets violated the found_note instruction embedded in their own prompt.
     """
     turns = []
     for i, s in enumerate(steps):
@@ -147,17 +185,24 @@ def verbalize(steps, dev0, faulty_pid):
         think = " ".join(p for p in parts if p)
         turns.append({"node": node, "think": think, "backtrack": bool(bt),
                       "backtrack_kind": bt, "mode": "SIMULATE", "call": node.call,
-                      "text": f"<think>{think}</think>"
+                      "text": f"<think>{think}</think>\n"
                               f"{'<backtrack/>' if bt else ''}"
                               f"<act>SIMULATE {node.call}</act>"})
 
     # ASTRO injects the reflection "immediately after the final node" so the model closes by
     # judging its own work. Here the harness's $found_note fixes the wording, so the reflection is
     # carried by the preceding turn and the commit stays byte-compatible with what the prompt asks.
+    if commit_mode == "best":
+        assert best_node is not None, "commit_mode='best' needs best_node"
+        turns.append({"node": best_node, "think": COMMIT_BEST_THINK, "backtrack": False,
+                      "backtrack_kind": None, "mode": "COMMIT", "call": best_node.call,
+                      "text": f"<think>{COMMIT_BEST_THINK}</think>\n"
+                              f"<act>COMMIT {best_node.call}</act>"})
+        return turns
     final = steps[-1]["node"]
     turns.append({"node": final, "think": COMMIT_THINK, "backtrack": False,
                   "backtrack_kind": None, "mode": "COMMIT", "call": final.call,
-                  "text": f"<think>{COMMIT_THINK}</think><act>COMMIT {final.call}</act>"})
+                  "text": f"<think>{COMMIT_THINK}</think>\n<act>COMMIT {final.call}</act>"})
     return turns
 
 
@@ -183,7 +228,7 @@ def _demo():
         print(f"\n=== {r['id']}  ({r['fault_types'][0]}, D={st['dev0_mm'] / r['tau_mm']:.1f}x tau)")
         for t in sample_traces(root, seed=args.seed):
             print(f"\n--- k={t['k']}  {t['n_probes']} probes, {t['n_backtracks']} backtracks")
-            for j, turn in enumerate(verbalize(t["steps"], st["dev0_mm"], st["faulty_pid"]), 1):
+            for j, turn in enumerate(verbalize(t["steps"], root.dev, st["faulty_pid"]), 1):
                 print(f"  turn {j}: {turn['text']}")
 
 

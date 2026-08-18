@@ -35,6 +35,17 @@ MAXLEN="${MAXLEN:-32768}"
 MAXRANK="${MAXRANK:-16}"
 VENV=/home/sammathew/miniconda3/envs/qwenvl
 
+# A stale server on this port is the worst failure mode: eval requests for model "astro" 404,
+# QwenVLAgent's retries exhaust into its flagged COMMIT NO_FIX() fallback, and the whole arm
+# scores ~0% -- which reads as "SFT destroyed the model" to anyone looking only at solved counts.
+# Refuse to race an existing listener; after startup, verify the adapter is actually served:
+#   curl -s http://127.0.0.1:$PORT/v1/models | grep -q '"'"$NAME"'"' && echo adapter live
+if ss -tln 2>/dev/null | grep -q ":$PORT "; then
+  echo "port $PORT is already in use (the stage-1 base server?). Stop it first:" >&2
+  ss -tlnp 2>/dev/null | grep ":$PORT " >&2 || true
+  exit 1
+fi
+
 exec env CUDA_VISIBLE_DEVICES="$GPU" "$VENV/bin/vllm" serve "$MODEL" \
   --port "$PORT" \
   --gpu-memory-utilization "$UTIL" \

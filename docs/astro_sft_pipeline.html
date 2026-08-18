@@ -1,0 +1,759 @@
+<title>ASTRO for Text-FixIt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;600&display=swap">
+
+<style>
+  :root{
+    --ground:#F7F8FA; --surface:#FFFFFF; --sunk:#EFF2F6;
+    --ink:#17202B; --muted:#5C6675; --faint:#8A94A3;
+    --rule:#D9DEE6; --rule-soft:#E7EBF1;
+    --pass:#0E8C6B; --pass-soft:#E2F3EC;
+    --back:#B0552E; --back-soft:#F8EAE1;
+    --astro:#6455B0; --astro-soft:#ECE9F8;
+    --shadow:0 1px 2px rgba(23,32,43,.05), 0 8px 24px -12px rgba(23,32,43,.18);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#10151C; --surface:#171E27; --sunk:#131A22;
+      --ink:#E6EAF0; --muted:#93A0B0; --faint:#6E7B8B;
+      --rule:#28313D; --rule-soft:#1F2833;
+      --pass:#35C79A; --pass-soft:#122C25;
+      --back:#E08A5A; --back-soft:#2E1F16;
+      --astro:#A99BE8; --astro-soft:#211D33;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#10151C; --surface:#171E27; --sunk:#131A22;
+    --ink:#E6EAF0; --muted:#93A0B0; --faint:#6E7B8B;
+    --rule:#28313D; --rule-soft:#1F2833;
+    --pass:#35C79A; --pass-soft:#122C25;
+    --back:#E08A5A; --back-soft:#2E1F16;
+    --astro:#A99BE8; --astro-soft:#211D33;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--ground); color:var(--ink);
+    font-family:"Source Serif 4",Georgia,serif; font-size:17px; line-height:1.62;
+    margin:0; padding:0 20px 96px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px; margin:0 auto}
+  .col{max-width:660px; margin-left:auto; margin-right:auto}
+
+  h1,h2,h3,.eyebrow,.tag,th,.lede-k{font-family:Archivo,"Helvetica Neue",Arial,sans-serif}
+  h1{font-size:clamp(2.1rem,5vw,3.1rem); line-height:1.04; font-weight:700;
+     letter-spacing:-.025em; text-wrap:balance; margin:0 0 .4rem}
+  h2{font-size:1.55rem; font-weight:700; letter-spacing:-.015em; line-height:1.15;
+     text-wrap:balance; margin:0 0 .2rem}
+  h3{font-size:1.06rem; font-weight:600; letter-spacing:-.005em; margin:0 0 .35rem}
+  p{margin:0 0 1.05rem}
+  a{color:var(--pass)}
+  code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+  code{font-size:.85em; background:var(--sunk); border:1px solid var(--rule-soft);
+       border-radius:4px; padding:.08em .34em}
+  strong{font-weight:600}
+
+  .eyebrow{font-size:.7rem; font-weight:600; letter-spacing:.15em; text-transform:uppercase;
+           color:var(--faint)}
+
+  header.hero{padding:72px 0 34px; border-bottom:1px solid var(--rule)}
+  .hero .sub{font-size:1.2rem; color:var(--muted); max-width:56ch; margin:.6rem 0 0}
+  .cred{margin-top:1.4rem; font-size:.85rem; color:var(--faint);
+        display:flex; flex-wrap:wrap; gap:.4rem 1.1rem}
+
+  section{padding:52px 0 8px; border-bottom:1px solid var(--rule-soft)}
+  section:last-of-type{border-bottom:0}
+  .sechead{margin-bottom:1.6rem}
+  .sechead .eyebrow{display:block; margin-bottom:.5rem}
+  .sechead p{color:var(--muted); margin:.4rem 0 0}
+
+  /* --- input / process / output --- */
+  .ipo{display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+       margin:0 0 1.6rem}
+  .ipo > div{background:var(--surface); border:1px solid var(--rule); border-radius:10px;
+             padding:18px 18px 16px; box-shadow:var(--shadow)}
+  .ipo .lede-k{font-size:.7rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+               color:var(--pass); display:block; margin-bottom:.5rem}
+  .ipo p{font-size:.94rem; margin:0}
+  .ipo ul{margin:.55rem 0 0; padding-left:1.05rem; font-size:.9rem; color:var(--muted)}
+  .ipo li{margin:.2rem 0}
+
+  /* --- figures --- */
+  figure{margin:2.2rem 0; max-width:1080px}
+  figure.wide{margin-left:auto; margin-right:auto}
+  .figbox{background:var(--surface); border:1px solid var(--rule); border-radius:12px;
+          padding:22px 20px 12px; overflow-x:auto; box-shadow:var(--shadow)}
+  svg{max-width:100%; height:auto; display:block; margin:0 auto; color:var(--ink)}
+  figcaption{font-size:.87rem; color:var(--muted); margin-top:.85rem; max-width:70ch;
+             margin-left:auto; margin-right:auto; text-align:center}
+  figcaption b{color:var(--ink); font-weight:600}
+
+  /* --- callouts --- */
+  .note{border-left:3px solid var(--rule); padding:.1rem 0 .1rem 1.05rem; margin:1.5rem 0;
+        color:var(--muted); font-size:.96rem}
+  .note.pass{border-left-color:var(--pass)}
+  .note.back{border-left-color:var(--back)}
+  .note b{color:var(--ink)}
+
+  /* --- tables --- */
+  .tablewrap{overflow-x:auto; margin:1.5rem 0}
+  table{border-collapse:collapse; width:100%; font-size:.9rem;
+        font-family:"Source Serif 4",Georgia,serif}
+  th{font-size:.68rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
+     color:var(--faint); text-align:left; padding:0 12px 8px; border-bottom:1px solid var(--rule);
+     white-space:nowrap}
+  td{padding:11px 12px; border-bottom:1px solid var(--rule-soft); vertical-align:top}
+  tbody tr:last-child td{border-bottom:0}
+  td.num{font-family:"JetBrains Mono",monospace; font-variant-numeric:tabular-nums;
+         font-size:.84rem; white-space:nowrap}
+
+  .tag{display:inline-block; font-size:.63rem; font-weight:600; letter-spacing:.08em;
+       text-transform:uppercase; padding:.16em .5em; border-radius:4px; white-space:nowrap;
+       border:1px solid transparent}
+  .t-keep{background:var(--sunk); color:var(--muted); border-color:var(--rule)}
+  .t-chg{background:var(--back-soft); color:var(--back); border-color:var(--back)}
+  .t-drop{background:var(--astro-soft); color:var(--astro); border-color:var(--astro)}
+  .t-new{background:var(--pass-soft); color:var(--pass); border-color:var(--pass)}
+
+  /* --- trace --- */
+  pre.trace{background:var(--sunk); border:1px solid var(--rule); border-radius:10px;
+            padding:16px 18px; overflow-x:auto; font-size:.775rem; line-height:1.75;
+            margin:1.3rem 0; color:var(--ink)}
+  pre.trace .t{color:var(--muted)}
+  pre.trace .r{color:var(--back); font-weight:600}
+  pre.trace .g{color:var(--pass); font-weight:600}
+  pre.trace .n{color:var(--faint)}
+
+  .statgrid{display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(155px,1fr));
+            margin:1.5rem 0}
+  .statgrid > div{background:var(--surface); border:1px solid var(--rule); border-radius:10px;
+                  padding:14px 16px}
+  .statgrid .v{font-family:Archivo,sans-serif; font-size:1.45rem; font-weight:700;
+               letter-spacing:-.02em; font-variant-numeric:tabular-nums; display:block}
+  .statgrid .k{font-size:.76rem; color:var(--muted); display:block; margin-top:.15rem}
+  .statgrid .m{font-size:.7rem; color:var(--faint); display:block; margin-top:.3rem;
+               font-family:"JetBrains Mono",monospace}
+
+  footer{padding:44px 0 0; color:var(--faint); font-size:.85rem; border-top:1px solid var(--rule);
+         margin-top:44px}
+  @media (prefers-reduced-motion:no-preference){ a{transition:opacity .15s} }
+  a:focus-visible,summary:focus-visible{outline:2px solid var(--pass); outline-offset:3px}
+</style>
+
+<div class="wrap">
+
+<header class="hero col">
+  <span class="eyebrow">Text-FixIt · Stage 2</span>
+  <h1>ASTRO for Text-FixIt</h1>
+  <p class="sub">Teaching an 8B model to search for a physical repair by showing it searches that
+  failed first — and recovered.</p>
+  <div class="cred">
+    <span>Method: <b>arXiv:2507.00417</b> (AI at Meta)</span>
+    <span>Target: <b>Qwen3-VL-8B</b>, LoRA</span>
+    <span>Branch: <code>astro-sft</code></span>
+  </div>
+</header>
+
+<!-- ============================================ INPUT / PROCESS / OUTPUT -->
+<section>
+  <div class="col sechead">
+    <span class="eyebrow">01 — The shape of it</span>
+    <h2>Input, process, output</h2>
+    <p>Before any of the paper's machinery, this is all the pipeline does.</p>
+  </div>
+
+  <div class="col ipo">
+    <div>
+      <span class="lede-k">Input</span>
+      <p>A broken refrigerator, in simulation.</p>
+      <ul>
+        <li>43 PartNet-Mobility fridges, split by shape</li>
+        <li>one part given one wrong transform</li>
+        <li>the healthy URDF, hidden, as reference</li>
+        <li>PyBullet as the verifier</li>
+      </ul>
+    </div>
+    <div>
+      <span class="lede-k">Process</span>
+      <p>Search the repair space, then tell the story of the search.</p>
+      <ul>
+        <li>score every candidate repair in the simulator</li>
+        <li>keep the tree, failures included</li>
+        <li>flatten it into one search that fails, backtracks, and succeeds</li>
+        <li>replay it through the real environment</li>
+      </ul>
+    </div>
+    <div>
+      <span class="lede-k">Output</span>
+      <p>Supervision, and an adapter.</p>
+      <ul>
+        <li>~16k pairs of <span class="mono">(prompt → think · backtrack · act)</span></li>
+        <li>a LoRA adapter over the language tower</li>
+        <li>vision tower untouched</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="col">
+    <p>The model never sees the answer. It has to <em>measure</em> its way to the repair — each
+    action is applied fresh to the broken object and the simulator reports how many millimetres of
+    error remain. So the thing worth teaching is not the answer. It is the procedure.</p>
+  </div>
+</section>
+
+<!-- ============================================ ASTRO ORIGINAL -->
+<section>
+  <div class="col sechead">
+    <span class="eyebrow">02 — The original</span>
+    <h2>What ASTRO does</h2>
+    <p>ASTRO's claim: Llama-3 fails under RL because it has no search prior — it never reflects or
+    backtracks, so RL has nothing to amplify. The fix is to build that prior by hand, from a search
+    tree, before RL ever starts.</p>
+  </div>
+
+  <figure class="wide">
+    <div class="figbox">
+      <svg viewBox="0 0 900 330" role="img" aria-label="A search tree with one correct and two incorrect terminals is flattened into a linear sequence; where the sequence jumps from a node to an ancestor, ASTRO inserts a self-reflection phrase and a backtrack sentence.">
+        <defs>
+          <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+          </marker>
+          <marker id="a1b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--back)"/>
+          </marker>
+        </defs>
+
+        <text x="30" y="26" font-family="Archivo, sans-serif" font-size="11" font-weight="600" letter-spacing="1.4" fill="var(--faint)">MCTS TREE</text>
+        <text x="500" y="26" font-family="Archivo, sans-serif" font-size="11" font-weight="600" letter-spacing="1.4" fill="var(--faint)">LINEARIZED SEQUENCE</text>
+
+        <!-- tree edges -->
+        <g stroke="currentColor" stroke-width="1.4" fill="none" opacity=".55">
+          <path d="M78 160 L150 96"/>
+          <path d="M78 160 L150 172"/>
+          <path d="M78 160 L150 250"/>
+          <path d="M182 96 L250 74"/>
+          <path d="M182 172 L250 172"/>
+          <path d="M182 250 L250 262"/>
+        </g>
+
+        <!-- tree nodes -->
+        <circle cx="62" cy="160" r="16" fill="var(--surface)" stroke="currentColor" stroke-width="1.6"/>
+        <text x="62" y="165" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor">R</text>
+
+        <circle cx="166" cy="96" r="15" fill="var(--surface)" stroke="currentColor" stroke-width="1.4"/>
+        <text x="166" y="101" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor">A</text>
+        <circle cx="166" cy="172" r="15" fill="var(--surface)" stroke="currentColor" stroke-width="1.4"/>
+        <text x="166" y="177" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor">B</text>
+        <circle cx="166" cy="250" r="15" fill="var(--surface)" stroke="currentColor" stroke-width="1.4" opacity=".4"/>
+        <text x="166" y="255" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor" opacity=".4">C</text>
+
+        <circle cx="266" cy="74" r="15" fill="var(--back-soft)" stroke="var(--back)" stroke-width="1.8"/>
+        <text x="266" y="79" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--back)">A1</text>
+        <circle cx="266" cy="172" r="15" fill="var(--pass-soft)" stroke="var(--pass)" stroke-width="2.2"/>
+        <text x="266" y="177" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--pass)">B1</text>
+        <circle cx="266" cy="262" r="15" fill="var(--surface)" stroke="currentColor" stroke-width="1.2" opacity=".35"/>
+
+        <text x="300" y="78" font-family="Archivo, sans-serif" font-size="11" fill="var(--back)">wrong answer</text>
+        <text x="300" y="176" font-family="Archivo, sans-serif" font-size="11" fill="var(--pass)">correct answer</text>
+        <text x="300" y="266" font-family="Archivo, sans-serif" font-size="11" fill="var(--faint)">not sampled</text>
+
+        <text x="30" y="308" font-family="Archivo, sans-serif" font-size="11.5" fill="var(--muted)">Q-value per node,</text>
+        <text x="30" y="323" font-family="Archivo, sans-serif" font-size="11.5" fill="var(--muted)">from M=16 rollouts</text>
+
+        <!-- transform arrow -->
+        <line x1="390" y1="172" x2="452" y2="172" stroke="currentColor" stroke-width="1.6" marker-end="url(#a1)" opacity=".6"/>
+        <text x="421" y="160" text-anchor="middle" font-family="Archivo, sans-serif" font-size="10.5" fill="var(--faint)">flatten</text>
+
+        <!-- sequence -->
+        <g font-family="JetBrains Mono, monospace" font-size="11">
+          <rect x="486" y="154" width="52" height="36" rx="6" fill="var(--surface)" stroke="currentColor" stroke-width="1.4"/>
+          <text x="512" y="177" text-anchor="middle" fill="currentColor">R</text>
+          <rect x="562" y="154" width="52" height="36" rx="6" fill="var(--surface)" stroke="currentColor" stroke-width="1.4"/>
+          <text x="588" y="177" text-anchor="middle" fill="currentColor">A</text>
+          <rect x="638" y="154" width="52" height="36" rx="6" fill="var(--back-soft)" stroke="var(--back)" stroke-width="1.8"/>
+          <text x="664" y="177" text-anchor="middle" fill="var(--back)">A1</text>
+          <rect x="726" y="154" width="52" height="36" rx="6" fill="var(--surface)" stroke="currentColor" stroke-width="1.4"/>
+          <text x="752" y="177" text-anchor="middle" fill="currentColor">B</text>
+          <rect x="802" y="154" width="52" height="36" rx="6" fill="var(--pass-soft)" stroke="var(--pass)" stroke-width="2.2"/>
+          <text x="828" y="177" text-anchor="middle" fill="var(--pass)">B1</text>
+        </g>
+        <g stroke="currentColor" stroke-width="1.4" fill="none" opacity=".55" marker-end="url(#a1)">
+          <line x1="538" y1="172" x2="556" y2="172"/>
+          <line x1="614" y1="172" x2="632" y2="172"/>
+          <line x1="778" y1="172" x2="796" y2="172"/>
+        </g>
+
+        <!-- the jump -->
+        <path d="M664 148 C664 104, 752 104, 752 146" stroke="var(--back)" stroke-width="2" fill="none" marker-end="url(#a1b)"/>
+        <text x="708" y="94" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11" font-weight="600" fill="var(--back)">ancestor jump</text>
+
+        <text x="486" y="228" font-family="Archivo, sans-serif" font-size="11.5" fill="var(--muted)">At the jump, ASTRO inserts, verbatim:</text>
+        <text x="486" y="252" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink)">“But wait, are we solving the problem</text>
+        <text x="486" y="270" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink)">correctly so far? Hmm...”</text>
+        <text x="486" y="292" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--back)">“Let's go back to where we ...”</text>
+      </svg>
+    </div>
+    <figcaption><b>ASTRO's core move.</b> A tree is flattened into one sequence that visits a failed
+    branch before the correct one. Wherever the flattened order jumps from a node back to an
+    ancestor, that is a backtrack — and the reflection phrase is stamped in at exactly that
+    point.</figcaption>
+  </figure>
+
+  <div class="col">
+    <p>Then supervised fine-tuning on those traces, and RL after. The result that justifies the
+    whole approach is ASTRO's own controlled ablation: same problems, same trees, same number of
+    examples — the <em>only</em> difference is whether the traces contain reflection and
+    backtracking.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Checkpoint</th><th>MATH-500</th><th>AMC 2023</th><th>AIME 2024</th></tr></thead>
+        <tbody>
+          <tr><td>Direct-SFT <span class="tag t-keep">no search prior</span></td><td class="num">65.8</td><td class="num">45.2</td><td class="num">16.7</td></tr>
+          <tr><td><b>ASTRO-SFT</b></td><td class="num">69.6</td><td class="num">51.9</td><td class="num">13.3</td></tr>
+          <tr><td>Direct-RL</td><td class="num">79.8</td><td class="num">60.5</td><td class="num">27.1</td></tr>
+          <tr><td><b>ASTRO-RL</b></td><td class="num"><b>81.8</b></td><td class="num"><b>64.4</b></td><td class="num"><b>30.0</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Backtrack count at test time correlates with score at <span class="mono">r = 0.82–0.85</span>.
+    Teaching the model to doubt itself is what makes RL work.</p>
+  </div>
+</section>
+
+<!-- ============================================ THE PIPELINE -->
+<section>
+  <div class="col sechead">
+    <span class="eyebrow">03 — The build</span>
+    <h2>The pipeline, and what changes</h2>
+    <p>Same five stages. What moves between them is different, and two of them collapse almost
+    entirely because our verifier is a physics engine rather than a string match.</p>
+  </div>
+
+  <figure class="wide">
+    <div class="figbox">
+      <svg viewBox="0 0 980 300" role="img" aria-label="Five pipeline stages from instance generation through tree search, linearization, verbalization, and LoRA SFT, to reinforcement learning; arrows are labelled with the data shape passing between stages, and each stage is tagged as kept, changed, or dropped relative to ASTRO.">
+        <defs>
+          <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <!-- stage boxes -->
+        <g>
+          <rect x="14" y="86" width="160" height="96" rx="9" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.4"/>
+          <rect x="212" y="86" width="160" height="96" rx="9" fill="var(--surface)" stroke="var(--back)" stroke-width="1.8"/>
+          <rect x="410" y="86" width="160" height="96" rx="9" fill="var(--surface)" stroke="var(--back)" stroke-width="1.8"/>
+          <rect x="608" y="86" width="160" height="96" rx="9" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.4"/>
+          <rect x="806" y="86" width="160" height="96" rx="9" fill="var(--surface)" stroke="var(--back)" stroke-width="1.8"/>
+        </g>
+
+        <g font-family="Archivo, sans-serif">
+          <text x="30" y="76" font-size="10" font-weight="600" letter-spacing="1.3" fill="var(--faint)">STAGE 0</text>
+          <text x="228" y="76" font-size="10" font-weight="600" letter-spacing="1.3" fill="var(--faint)">§2.2 SEARCH</text>
+          <text x="426" y="76" font-size="10" font-weight="600" letter-spacing="1.3" fill="var(--faint)">§2.3 LINEARIZE</text>
+          <text x="624" y="76" font-size="10" font-weight="600" letter-spacing="1.3" fill="var(--faint)">§2.4 CLONE</text>
+          <text x="822" y="76" font-size="10" font-weight="600" letter-spacing="1.3" fill="var(--faint)">§3.1 SFT</text>
+
+          <text x="30" y="114" font-size="14" font-weight="700" fill="currentColor">Instances</text>
+          <text x="228" y="114" font-size="14" font-weight="700" fill="currentColor">Tree + Q</text>
+          <text x="426" y="114" font-size="14" font-weight="700" fill="currentColor">Node sequence</text>
+          <text x="624" y="114" font-size="14" font-weight="700" fill="currentColor">Turns</text>
+          <text x="822" y="114" font-size="14" font-weight="700" fill="currentColor">LoRA</text>
+        </g>
+
+        <g font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)">
+          <text x="30" y="136">make_sets.py</text>
+          <text x="30" y="151">split by shape</text>
+          <text x="30" y="166">tau = 1.5%</text>
+
+          <text x="228" y="136">tree.py</text>
+          <text x="228" y="151">enumerate, not</text>
+          <text x="228" y="166">PUCT-sample</text>
+
+          <text x="426" y="136">linearize.py</text>
+          <text x="426" y="151">Algorithm 1,</text>
+          <text x="426" y="166">unique per cell</text>
+
+          <text x="624" y="136">verbalize.py</text>
+          <text x="624" y="151">templated, not</text>
+          <text x="624" y="166">LLM-rewritten</text>
+
+          <text x="822" y="136">train_lora.py</text>
+          <text x="822" y="151">r=16, LLM only</text>
+          <text x="822" y="166">lr 1e-4</text>
+        </g>
+
+        <!-- tags -->
+        <g font-family="Archivo, sans-serif" font-size="9" font-weight="600" letter-spacing=".7">
+          <rect x="112" y="92" width="52" height="16" rx="3" fill="var(--sunk)" stroke="var(--rule)"/>
+          <text x="138" y="104" text-anchor="middle" fill="var(--muted)">NEW</text>
+          <rect x="310" y="92" width="52" height="16" rx="3" fill="var(--back-soft)" stroke="var(--back)"/>
+          <text x="336" y="104" text-anchor="middle" fill="var(--back)">CHANGED</text>
+          <rect x="508" y="92" width="52" height="16" rx="3" fill="var(--back-soft)" stroke="var(--back)"/>
+          <text x="534" y="104" text-anchor="middle" fill="var(--back)">CHANGED</text>
+          <rect x="706" y="92" width="52" height="16" rx="3" fill="var(--sunk)" stroke="var(--rule)"/>
+          <text x="732" y="104" text-anchor="middle" fill="var(--muted)">KEPT</text>
+          <rect x="904" y="92" width="52" height="16" rx="3" fill="var(--back-soft)" stroke="var(--back)"/>
+          <text x="930" y="104" text-anchor="middle" fill="var(--back)">CHANGED</text>
+        </g>
+
+        <!-- arrows with data shapes -->
+        <g stroke="currentColor" stroke-width="1.5" opacity=".6" marker-end="url(#a2)" fill="none">
+          <line x1="176" y1="134" x2="206" y2="134"/>
+          <line x1="374" y1="134" x2="404" y2="134"/>
+          <line x1="572" y1="134" x2="602" y2="134"/>
+          <line x1="770" y1="134" x2="800" y2="134"/>
+        </g>
+        <g font-family="JetBrains Mono, monospace" font-size="8.5" fill="var(--faint)" text-anchor="middle">
+          <text x="191" y="126">urdf</text>
+          <text x="389" y="126">tree</text>
+          <text x="587" y="126">L</text>
+          <text x="785" y="126">pairs</text>
+        </g>
+
+        <!-- verifier rail -->
+        <rect x="212" y="216" width="358" height="34" rx="7" fill="var(--pass-soft)" stroke="var(--pass)" stroke-width="1.6"/>
+        <text x="391" y="238" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12" font-weight="700" fill="var(--pass)">PyBullet is the verifier</text>
+        <g stroke="var(--pass)" stroke-width="1.4" fill="none" opacity=".8" stroke-dasharray="3 3">
+          <line x1="292" y1="216" x2="292" y2="186"/>
+          <line x1="490" y1="216" x2="490" y2="186"/>
+        </g>
+        <text x="212" y="272" font-family="Archivo, sans-serif" font-size="11" fill="var(--muted)">exact PASS + dense residual error, one call —</text>
+        <text x="212" y="288" font-family="Archivo, sans-serif" font-size="11" fill="var(--muted)">so M=16 rollouts and the N=8 self-eval both vanish</text>
+
+        <!-- RL stage, greyed -->
+        <rect x="806" y="216" width="160" height="60" rx="9" fill="none" stroke="var(--rule)" stroke-width="1.4" stroke-dasharray="5 4"/>
+        <text x="822" y="240" font-family="Archivo, sans-serif" font-size="12.5" font-weight="700" fill="var(--faint)">§3.2 RL</text>
+        <text x="822" y="260" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--faint)">Stage 3 — later</text>
+        <line x1="886" y1="186" x2="886" y2="212" stroke="var(--rule)" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#a2)" opacity=".6"/>
+      </svg>
+    </div>
+    <figcaption><b>The pipeline.</b> Arrows carry the data shape, not just sequence. The green rail
+    is the substitution that pays for everything else: because a physics engine can score a
+    candidate exactly and densely in one call, ASTRO's rollout estimation and its LLM
+    self-evaluation filter both disappear.</figcaption>
+  </figure>
+</section>
+
+<!-- ============================================ ADAPTATIONS -->
+<section>
+  <div class="col sechead">
+    <span class="eyebrow">04 — The hard part</span>
+    <h2>Our actions are continuous</h2>
+    <p>ASTRO searches discrete reasoning steps. A repair is
+    <span class="mono">(part, operation, axis, <b>magnitude</b>)</span> — and the magnitude is a real
+    number. Three things follow, and getting any of them wrong quietly produces degenerate
+    traces.</p>
+  </div>
+
+  <figure class="wide">
+    <div class="figbox">
+      <svg viewBox="0 0 940 400" role="img" aria-label="A three-level search tree: a virtual root, virtual part nodes, hypothesis cell nodes, and magnitude refinement nodes. Three jumps are shown; the depth of the lowest common ancestor decides whether the jump is a part-selection backtrack, a transformation-selection backtrack, or not a backtrack at all.">
+        <defs>
+          <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--back)"/>
+          </marker>
+          <marker id="a3g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--pass)"/>
+          </marker>
+        </defs>
+
+        <g font-family="Archivo, sans-serif" font-size="10" font-weight="600" letter-spacing="1.3" fill="var(--faint)">
+          <text x="26" y="26">ROOT</text>
+          <text x="150" y="26">PART · virtual</text>
+          <text x="330" y="26">CELL · one probe</text>
+          <text x="590" y="26">REFINE · magnitude</text>
+        </g>
+
+        <!-- edges -->
+        <g stroke="currentColor" stroke-width="1.3" fill="none" opacity=".45">
+          <path d="M62 200 L166 110"/>
+          <path d="M62 200 L166 268"/>
+          <path d="M202 110 L338 86"/>
+          <path d="M202 268 L338 176"/>
+          <path d="M202 268 L338 262"/>
+          <path d="M202 268 L338 340"/>
+          <path d="M400 262 L590 262"/>
+          <path d="M652 262 L760 262"/>
+        </g>
+
+        <!-- root -->
+        <circle cx="46" cy="200" r="17" fill="var(--surface)" stroke="currentColor" stroke-width="1.6" stroke-dasharray="3 2"/>
+        <text x="46" y="205" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor">R</text>
+
+        <!-- part nodes (virtual) -->
+        <g stroke-dasharray="3 2">
+          <rect x="150" y="94" width="52" height="32" rx="6" fill="var(--surface)" stroke="currentColor" stroke-width="1.4"/>
+          <rect x="150" y="252" width="52" height="32" rx="6" fill="var(--surface)" stroke="currentColor" stroke-width="1.4"/>
+        </g>
+        <text x="176" y="115" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor">P0</text>
+        <text x="176" y="273" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor">P1</text>
+
+        <!-- cells -->
+        <g font-family="JetBrains Mono, monospace" font-size="10">
+          <rect x="338" y="70" width="120" height="32" rx="6" fill="var(--back-soft)" stroke="var(--back)" stroke-width="1.6"/>
+          <text x="398" y="90" text-anchor="middle" fill="var(--back)">TRANSLATE·X</text>
+
+          <rect x="338" y="160" width="120" height="32" rx="6" fill="var(--back-soft)" stroke="var(--back)" stroke-width="1.6"/>
+          <text x="398" y="180" text-anchor="middle" fill="var(--back)">ROTATE·Z</text>
+
+          <rect x="338" y="246" width="120" height="32" rx="6" fill="var(--surface)" stroke="currentColor" stroke-width="1.5"/>
+          <text x="398" y="266" text-anchor="middle" fill="currentColor">SCALE·X</text>
+
+          <rect x="338" y="324" width="120" height="32" rx="6" fill="var(--surface)" stroke="currentColor" stroke-width="1.1" opacity=".35"/>
+          <text x="398" y="344" text-anchor="middle" fill="currentColor" opacity=".35">SCALE·Y</text>
+
+          <rect x="590" y="246" width="62" height="32" rx="6" fill="var(--surface)" stroke="currentColor" stroke-width="1.5"/>
+          <text x="621" y="266" text-anchor="middle" fill="currentColor">0.85</text>
+
+          <rect x="760" y="246" width="62" height="32" rx="6" fill="var(--pass-soft)" stroke="var(--pass)" stroke-width="2.2"/>
+          <text x="791" y="266" text-anchor="middle" fill="var(--pass)">0.72</text>
+        </g>
+        <text x="836" y="266" font-family="Archivo, sans-serif" font-size="11.5" font-weight="600" fill="var(--pass)">PASS</text>
+
+        <!-- jump 1: cross-part, LCA = root -->
+        <path d="M338 86 C250 40, 120 40, 46 178" stroke="var(--back)" stroke-width="2" fill="none" marker-end="url(#a3)"/>
+        <text x="196" y="52" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11" font-weight="600" fill="var(--back)">LCA = root</text>
+        <text x="196" y="67" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--back)">part_selection</text>
+
+        <!-- jump 2: within part, LCA = part node -->
+        <path d="M338 176 C280 200, 246 232, 204 262" stroke="var(--back)" stroke-width="2" fill="none" marker-end="url(#a3)"/>
+        <text x="268" y="228" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11" font-weight="600" fill="var(--back)">LCA = part</text>
+        <text x="268" y="243" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--back)">transformation_selection</text>
+
+        <!-- refinement, not a backtrack -->
+        <line x1="466" y1="262" x2="582" y2="262" stroke="var(--pass)" stroke-width="2" marker-end="url(#a3g)"/>
+        <text x="524" y="252" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11" font-weight="600" fill="var(--pass)">NOT a backtrack</text>
+        <text x="524" y="296" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)">V x A / (A - B)</text>
+        <text x="524" y="310" text-anchor="middle" font-family="Archivo, sans-serif" font-size="10.5" fill="var(--muted)">same hypothesis, new number</text>
+
+        <line x1="26" y1="378" x2="914" y2="378" stroke="var(--rule)" stroke-width="1"/>
+        <text x="26" y="396" font-family="Archivo, sans-serif" font-size="11.5" fill="var(--muted)">Dashed nodes are structural — they carry no simulation. The tree is three levels deep so that the depth of the jump means something.</text>
+      </svg>
+    </div>
+    <figcaption><b>Why the tree has three levels.</b> The <em>depth of the lowest common ancestor</em>
+    is what separates the two backtrack actions the FixIt-RL proposal defines — and separates both
+    from a magnitude refinement, which is not a backtrack at all.</figcaption>
+  </figure>
+
+  <div class="col">
+    <h3>1 · Uniqueness is per hypothesis, not per action string</h3>
+    <p>ASTRO forbids two nodes carrying the same incorrect <em>answer</em>. Translated literally that
+    forbids duplicate action strings — which is useless here, because
+    <code>TRANSLATE(P1,Y,-0.145)</code> and <code>TRANSLATE(P1,Y,-0.150)</code> are the same
+    hypothesis wearing two numbers. A trace that "explored" both would teach the model to re-probe a
+    branch it had already refuted. So the unit is the discrete cell
+    <span class="mono">(part, op, axis)</span>, and the magnitude lives inside it.</p>
+
+    <h3>2 · A refinement is not a backtrack</h3>
+    <p>Walking down a refinement chain is continuation — the search has locked on and is tuning a
+    number. Only a change of cell is a backtrack. This distinction does not exist in ASTRO, because
+    a math step has no parameter to tune, and it is the whole reason for the third level of the
+    tree.</p>
+
+    <h3>3 · The sign belongs to the magnitude</h3>
+    <p>A wrongly-signed probe makes the error worse, so trying the opposite sign is a
+    <em>refinement</em> inside the cell, never a new branch. This one is not academic — see
+    below.</p>
+
+    <div class="note back">
+      <b>Measured.</b> Probing <code>ROTATE(part, A, +20)</code> once per axis and never trying the
+      other sign left rotate faults at <b>3/10</b>. In every failure, no probe ever beat the broken
+      object, so the lock-on threshold never fired and refinement never started. Adding the flip took
+      rotate to <b>9/10</b>.
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ THE LOCAL MINIMUM -->
+<section>
+  <div class="col sechead">
+    <span class="eyebrow">05 — A finding</span>
+    <h2>The trap in our own prompt</h2>
+    <p>Building the expert surfaced something about the environment that applies to the models too.</p>
+  </div>
+
+  <figure class="wide">
+    <div class="figbox">
+      <svg viewBox="0 0 900 250" role="img" aria-label="An error axis in units of tolerance. The broken object sits at 6.7 tolerance units. A translate probe reduces error to 0.618 units, inside the tolerance line, but still fails because the oversized door interpenetrates. The correct scale repair reaches a passing state.">
+        <defs>
+          <marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <text x="30" y="28" font-family="Archivo, sans-serif" font-size="11" font-weight="600" letter-spacing="1.3" fill="var(--faint)">RESIDUAL ERROR, IN UNITS OF TOLERANCE (τ)</text>
+
+        <!-- axis -->
+        <line x1="70" y1="150" x2="850" y2="150" stroke="currentColor" stroke-width="1.4" opacity=".5"/>
+        <g font-family="JetBrains Mono, monospace" font-size="10" fill="var(--faint)" text-anchor="middle">
+          <text x="820" y="172">0τ</text>
+          <text x="700" y="172">1τ</text>
+          <text x="480" y="172">3τ</text>
+          <text x="150" y="172">7τ</text>
+        </g>
+        <g stroke="currentColor" stroke-width="1" opacity=".3">
+          <line x1="820" y1="144" x2="820" y2="156"/>
+          <line x1="480" y1="144" x2="480" y2="156"/>
+          <line x1="150" y1="144" x2="150" y2="156"/>
+        </g>
+
+        <!-- tolerance gate -->
+        <line x1="700" y1="60" x2="700" y2="196" stroke="var(--pass)" stroke-width="1.6" stroke-dasharray="5 4"/>
+        <text x="704" y="74" font-family="Archivo, sans-serif" font-size="11" font-weight="600" fill="var(--pass)">tolerance</text>
+
+        <!-- broken -->
+        <circle cx="182" cy="150" r="8" fill="var(--surface)" stroke="currentColor" stroke-width="2"/>
+        <text x="182" y="126" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11.5" font-weight="600" fill="currentColor">broken</text>
+        <text x="182" y="200" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--muted)">6.7τ</text>
+
+        <!-- translate path -->
+        <path d="M190 142 C400 92, 620 96, 738 138" stroke="var(--back)" stroke-width="2.2" fill="none" marker-end="url(#a4)" opacity=".9"/>
+        <text x="452" y="92" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" font-weight="600" fill="var(--back)">TRANSLATE along the mis-scaled axis</text>
+        <text x="452" y="108" text-anchor="middle" font-family="Archivo, sans-serif" font-size="10.5" fill="var(--back)">cuts the error 79–91% — a bigger drop than the correct probe</text>
+
+        <circle cx="746" cy="150" r="8" fill="var(--back-soft)" stroke="var(--back)" stroke-width="2.2"/>
+        <text x="762" y="146" font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="600" fill="var(--back)">0.618τ</text>
+        <text x="762" y="162" font-family="Archivo, sans-serif" font-size="11" font-weight="600" fill="var(--back)">FAILS</text>
+
+        <!-- scale path -->
+        <path d="M190 158 C420 216, 660 214, 812 162" stroke="var(--pass)" stroke-width="2.2" fill="none" marker-end="url(#a4)"/>
+        <text x="480" y="234" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" font-weight="600" fill="var(--pass)">SCALE — the actual fault</text>
+
+        <circle cx="820" cy="150" r="9" fill="var(--pass-soft)" stroke="var(--pass)" stroke-width="2.6"/>
+        <text x="820" y="126" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11.5" font-weight="600" fill="var(--pass)">PASS</text>
+      </svg>
+    </div>
+    <figcaption><b>A local minimum inside the tolerance band.</b> On
+    <span class="mono">10867_ctrl_scale_0</span>, sliding the over-sized door along the mis-scaled
+    axis realigns its centroid and lands at 0.618τ — <em>inside</em> the deviation tolerance — and
+    still fails, because the door interpenetrates the body.</figcaption>
+  </figure>
+
+  <div class="col">
+    <p><span class="mono">deviation_mm</span> is mean per-vertex displacement. So a translation along
+    the mis-scaled axis produces a <em>larger</em> error drop than the correct <code>SCALE</code>
+    probe does. The prompt's own instruction — <em>"the moment any probe cuts the error by half or
+    more, the search is OVER"</em> — therefore locks onto the wrong hypothesis and refines into a
+    dead end.</p>
+
+    <div class="note pass">
+      <b>Why this matters beyond the expert.</b> Refining the top three cells instead of committing
+      to the first took scale from 6/10 to 7/10, and it is the more faithful reading of ASTRO anyway
+      — its MCTS explores several branches. But the same trap is in the prompt the <em>models</em>
+      read, and scale is their weakest fault type too (2/10 text, 4/10 image). That is testable as a
+      prompt change on its own, with no training involved.
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ REAL TRACE -->
+<section>
+  <div class="col sechead">
+    <span class="eyebrow">06 — Output</span>
+    <h2>What one training example looks like</h2>
+    <p>Real output from the pipeline, on <span class="mono">10036_ctrl_translate_0</span>. This is a
+    <span class="mono">k=2</span> trace: two failed branches before the repair.</p>
+  </div>
+
+  <div class="col">
+<pre class="trace"><span class="n">turn 1</span>  <span class="t">&lt;think&gt;</span>The object is off by 198 mm and nothing has been probed yet, so
+        e = 0.19847 m and I will start with ROTATE(P1, X, 20).<span class="t">&lt;/think&gt;</span>
+        <span class="t">&lt;act&gt;</span>SIMULATE ROTATE(P1, X, 20.0000)<span class="t">&lt;/act&gt;</span>
+
+<span class="n">turn 2</span>  <span class="t">&lt;think&gt;</span>ROTATE(P1, X, 20.0000) raised the error from 198 mm to 259 mm.
+        I will try the opposite sign on the same axis.<span class="t">&lt;/think&gt;</span>
+        <span class="t">&lt;act&gt;</span>SIMULATE ROTATE(P1, X, -20.0000)<span class="t">&lt;/act&gt;</span>
+
+<span class="n">turn 3</span>  <span class="t">&lt;think&gt;</span><span class="r">But wait, is this the right repair so far? Hmm...</span> ROTATE(P1, X,
+        -20.0000) raised the error from 198 mm to 259 mm. <span class="r">This does not look like
+        the right repair so far. Let's go back to where we chose the
+        operation and axis for P1.</span> I will test ROTATE on axis Z next.<span class="t">&lt;/think&gt;</span>
+        <span class="r">&lt;backtrack/&gt;</span><span class="t">&lt;act&gt;</span>SIMULATE ROTATE(P1, Z, 20.0000)<span class="t">&lt;/act&gt;</span>
+
+<span class="n">turn 4</span>  <span class="t">&lt;think&gt;</span>ROTATE(P1, Z, 20.0000) raised the error from 198 mm to 226 mm.
+        I will try the opposite sign on the same axis.<span class="t">&lt;/think&gt;</span>
+        <span class="t">&lt;act&gt;</span>SIMULATE ROTATE(P1, Z, -20.0000)<span class="t">&lt;/act&gt;</span>
+
+<span class="n">turn 5</span>  <span class="t">&lt;think&gt;</span><span class="r">But wait, is this the right repair so far? Hmm...</span> ... <span class="r">Let's go back
+        to where we chose the operation and axis for P1.</span> I will test
+        TRANSLATE on axis X next.<span class="t">&lt;/think&gt;</span>
+        <span class="r">&lt;backtrack/&gt;</span><span class="t">&lt;act&gt;</span>SIMULATE TRANSLATE(P1, X, -0.19847)<span class="t">&lt;/act&gt;</span>
+
+<span class="n">turn 6</span>  <span class="t">&lt;think&gt;</span>A SIMULATE reported ALL PASS, so this is the repair.<span class="t">&lt;/think&gt;</span>
+        <span class="g">&lt;act&gt;COMMIT TRANSLATE(P1, X, -0.19847)&lt;/act&gt;</span></pre>
+
+    <div class="note">
+      Every turn is an <b>independent</b> training pair. <code>loop_qwen</code> runs
+      <span class="mono">window3</span>, which is a stateless single-message call — the probe log is
+      re-rendered into the prompt each turn. So a six-turn trace is six
+      <span class="mono">(system, user) → assistant</span> examples, with no multi-turn masking and
+      no conversation collator.
+    </div>
+
+    <p>The prompts are not written by hand. <span class="mono">$history</span>,
+    <span class="mono">$untried</span> and <span class="mono">$targetable</span> are computed from
+    <span class="mono">env.history</span> at call time, so the builder steps a real
+    <span class="mono">FridgeRepairEnv</span> and calls the agent's own prompt methods. Prompt parity
+    with evaluation is structural rather than asserted.</p>
+  </div>
+</section>
+
+<!-- ============================================ SCOREBOARD -->
+<section>
+  <div class="col sechead">
+    <span class="eyebrow">07 — Status</span>
+    <h2>Where it stands</h2>
+    <p>Validated end-to-end on the 30-problem std30 benchmark. No training has been run.</p>
+  </div>
+
+  <div class="col">
+    <div class="statgrid">
+      <div><span class="v">26/30</span><span class="k">trees with a passing terminal</span><span class="m">ASTRO's own: 68%</span></div>
+      <div><span class="v">104</span><span class="k">traces</span><span class="m">26 direct + 78 search</span></div>
+      <div><span class="v">551</span><span class="k">examples, 0 dropped</span><span class="m">3 verification gates</span></div>
+      <div><span class="v">3,211</span><span class="k">max tokens</span><span class="m">so max_length 4096</span></div>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>ASTRO §3.1 / B.2</th><th>Here</th><th></th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>1 epoch, AdamW, cosine</td><td class="num">same</td><td><span class="tag t-keep">kept</span></td><td>ASTRO trains one epoch deliberately, to initialise RL — our intent too</td></tr>
+          <tr><td>LR <span class="mono">3e-6</span></td><td class="num">1e-4</td><td><span class="tag t-chg">changed</span></td><td>3e-6 is a full-finetune rate; LoRA's <span class="mono">B</span> starts at zero and would barely move</td></tr>
+          <tr><td>no masking, all tokens</td><td class="num">completion only</td><td><span class="tag t-chg">changed</span></td><td>our system prompt is ~2,800 tokens identical in every example</td></tr>
+          <tr><td>max seq len <span class="mono">8192</span></td><td class="num">4096</td><td><span class="tag t-chg">changed</span></td><td>measured max is 3,211 tokens; 8192 is padding</td></tr>
+          <tr><td><span class="mono">M=16</span> rollouts for Q</td><td class="num">1 call</td><td><span class="tag t-drop">dropped</span></td><td>PyBullet returns exact PASS plus a dense residual</td></tr>
+          <tr><td><span class="mono">N=8</span> LLM self-eval filter</td><td class="num">—</td><td><span class="tag t-drop">dropped</span></td><td>a pass <em>is</em> the repair; there is no lucky guess to filter</td></tr>
+          <tr><td>LLM rewrites each step</td><td class="num">templated</td><td><span class="tag t-chg">changed</span></td><td>every sentence is arithmetic over two measured errors — verifiable and free</td></tr>
+          <tr><td>full FT of 70B, 64×H100</td><td class="num">LoRA r=16</td><td><span class="tag t-chg">changed</span></td><td>one RTX 6000 Ada; 252 LLM linears, 116 vision linears excluded</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>The experiment that decides it</h3>
+    <p>Arm 2 against arm 4 — traces with failed branches and backtrack labels, versus direct
+    solutions only, from the <em>same trees</em>. That is ASTRO's Table 4 reproduced on this task,
+    and it is what says whether the search prior does anything here.</p>
+
+    <div class="note">
+      <b>A null result is a real result.</b> The risk is that SFT teaches output priors rather than
+      search. <span class="mono">funnel.py</span> measures part / type / axis against chance, and the
+      held-out split is by shape, so memorisation shows up as a gap. Both are reportable either way.
+    </div>
+  </div>
+</section>
+
+<footer class="col">
+  Text-FixIt Stage 2 · built on branch <code>astro-sft</code> · method from Kim et al.,
+  <i>ASTRO: Teaching Language Models to Reason by Reflecting and Backtracking In-Context</i>,
+  arXiv:2507.00417.
+</footer>
+
+</div>
