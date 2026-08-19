@@ -189,8 +189,15 @@ def main():
     ap.add_argument("--no-grad-checkpointing", action="store_true")
     ap.add_argument("--val-frac", type=float, default=0.05)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--resume", default=None,
+                    help="resume from a checkpoint dir (e.g. after the env was modified under a "
+                         "live run). Data, seed and config must be unchanged.")
     ap.add_argument("--allow-any-split", action="store_true",
                     help="skip the train-split-only guard (throwaway experiments only)")
+    ap.add_argument("--wandb", action="store_true",
+                    help="log to Weights & Biases (needs WANDB_API_KEY in the environment; the "
+                         "run name is the --out basename)")
+    ap.add_argument("--wandb-project", default="fixit-astro-sft")
     ap.add_argument("--yes", action="store_true",
                     help="required to actually start training; without it this is a dry run")
     args = ap.parse_args()
@@ -255,6 +262,14 @@ def main():
         print("\nDRY RUN -- nothing was loaded or trained. Re-run with --yes to start.")
         return
 
+    if args.wandb:
+        # Offline mode needs no auth -- runs are written locally and `wandb sync`ed once a valid
+        # key exists, so a bad/missing key must not block training.
+        if os.environ.get("WANDB_MODE") != "offline" and not os.environ.get("WANDB_API_KEY"):
+            raise SystemExit("--wandb needs WANDB_API_KEY in the environment (it lives in .env), "
+                             "or WANDB_MODE=offline to log locally and sync later")
+        os.environ.setdefault("WANDB_PROJECT", args.wandb_project)
+
     processor = AutoProcessor.from_pretrained(args.model)
     tokenizer = getattr(processor, "tokenizer", processor)
     model = load_model(args.model, dtype=args.dtype, attn=args.attn)
@@ -287,7 +302,8 @@ def main():
         logging_steps=5,
         save_strategy="epoch",
         eval_strategy="epoch" if val_rows else "no",
-        report_to=[],
+        report_to=(["wandb"] if args.wandb else []),
+        run_name=os.path.basename(out.rstrip("/")),
         seed=args.seed,
     )
 
@@ -307,7 +323,7 @@ def main():
         if p.requires_grad and any(m in name for m in VISION_MARKERS):
             raise SystemExit(f"vision parameter is trainable: {name} -- refusing to train")
 
-    trainer.train()
+    trainer.train(resume_from_checkpoint=args.resume)
     trainer.save_model(out)
     # Gate 5: save the processor beside the adapter, or inference rebuilds a different chat
     # template and every served prompt silently differs from the trained one.
